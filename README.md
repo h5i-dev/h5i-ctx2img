@@ -1,10 +1,14 @@
 # context2map (`c2m`)
 
-**Your repository as a map your AI can actually read.**
+**Your context as a map your AI can actually read.**
 
-`c2m` compiles a whole codebase into a *Repository Atlas* — a query-conditioned
-semantic map image plus a small text legend — that a vision LLM can survey in
-**~2,000 tokens**, then zoom back to exact source through stable handles.
+`c2m` renders the text an agent must ingest — a whole repository, a prompt, a
+doc, tool output — into **dense, structured images** that cost a fraction of
+the tokens. A codebase becomes a *Repository Atlas*: a query-conditioned map
+a VLM surveys in ~2,000 tokens, zooms into territory tiles that carry the
+**actual source typeset inside each file's cell**, and resolves back to
+guaranteed-exact text through stable handles. Any other text becomes dense
+`paint` pages (measured on this repo's own design doc: **76% fewer tokens**).
 Written in Rust; a 5,000-file repo maps **cold in ~0.4 s**.
 
 ![Repository map](assets/repo-map.svg)
@@ -13,25 +17,28 @@ Written in Rust; a 5,000-file repo maps **cold in ~0.4 s**.
 
 ## The idea
 
-Dumping a repo into an LLM context costs hundreds of thousands of tokens.
-Text "repo maps" cover a sliver of the tree. `c2m` takes a third path, backed
-by recent research on optical context compression (DeepSeek-OCR, Glyph,
-LensVLM): render **structure, not text, into pixels**, and keep everything
-exactness-critical — code, identifiers, instructions — in text.
+Dumping context into an LLM costs tokens by the character; an image costs
+tokens by its pixel dimensions, no matter how much text it holds. Recent work
+(DeepSeek-OCR, Glyph, "Text or Pixels?", LensVLM) shows modern VLMs read
+rendered text reliably at 2–4× effective compression — and that the failures
+concentrate in *exactness*: high-entropy strings silently misread. `c2m` is
+built around that split:
 
-- **Position** = module topology (semantically-close code is spatially close)
-- **Cell area** = code size · **city dots** = important files (PageRank)
-- **Elevation ▲1–▲5** = relevance *to your current task* (lexical + embedding
-  + graph diffusion + git churn)
-- **Roads** = imports/references · **red hatch** = trust hazards (network,
-  exec, secrets, eval)
-- **Offshore islands** = external dependencies
-
-Every element carries a stable handle (`R3`, `F103`, `S12`). The map is a
-**lossy, reversible index**: the model looks at the atlas, picks a region,
-and calls back for exact source. Selective expansion of a compressed view is
-exactly the loop LensVLM (arXiv:2605.07019) showed reaches full-text parity
-at ~4× effective compression — zero-shot on commercial models.
+- **Pixels carry text at a chosen density, plus structure** — topology,
+  size, task relevance, hazards, dependencies as cartography:
+  - **Position** = module topology · **cell area** = code size · **city
+    dots** = important files (PageRank)
+  - **Elevation ▲1–▲5** = relevance *to your current task* (lexical +
+    embedding + graph diffusion + git churn)
+  - **Roads** = imports/references · **red hatch** = trust hazards ·
+    **islands** = external dependencies
+  - `--codex` tiles typeset each file's real source inside its territory
+- **Text carries the guarantees** — every element has a stable handle
+  (`R3`, `F103`, `S12`) resolving to exact source via `c2m read`; a
+  **verbatim factsheet** (paths, SHAs, IDs extracted as plain text) rides
+  next to every rendered page so precision-critical strings are quoted,
+  never transcribed from pixels. Scan-compressed-then-expand is the loop
+  LensVLM (arXiv:2605.07019) showed reaches full-text parity zero-shot.
 
 ## Quickstart
 
@@ -40,16 +47,31 @@ cargo install --path crates/c2m-cli   # or: cargo build --release
 
 c2m map "fix the session expiry bug"  # atlas.png + legend + handles
 c2m zoom R3                           # region tile: files + symbols
+c2m zoom R3 --codex                   # territory tile with the SOURCE TEXT inside
 c2m read F103 --lines 40:120          # exact source, always text
 c2m locate "session"                  # find handles
+
+c2m paint big-context.md              # ANY text → dense image pages + factsheet
+cat prompt.txt | c2m paint            # works on stdin too
 
 c2m render --out map.svg              # the pretty human map (parchment theme)
 c2m badge                             # README-sized hero image
 ```
 
-On small repos `c2m map` automatically emits a text-only roster when that is
-cheaper than an image — it never spends your tokens on a picture that doesn't
-pay for itself.
+`c2m` never spends tokens on a picture that doesn't pay for itself: `map`
+falls back to a text roster on small repos, and `paint` refuses when text is
+cheaper (override with `--force`). Every run prints the counterfactual —
+image tokens spent vs text tokens avoided.
+
+### `c2m paint`: any text → image pages
+
+Pages follow the provider's *resample contract* (Anthropic: 1568×≤728, so
+the encoder sees exactly what you rendered), hard newlines become a visible
+`↵` sentinel so packing stays lossless, and a factsheet of exact identifiers
+accompanies the images as text. Constants are borrowed from
+[pxpipe](https://github.com/teamchong/pxpipe)'s field measurements on live
+Claude Code traffic (~3 chars/image-token on dense content, ~99% read
+fidelity with reflow) — c2m adds the structured/cartographic layer on top.
 
 ### Use it from a coding agent
 
@@ -85,6 +107,14 @@ map-reading ability. `c2m bench` compares atlas vs text-only localization
 accuracy at matched token budgets on your own task set. Legibility is a
 tested property here, not an assumption.
 
+Honesty notes, because text-in-pixels has real limits: exact-string recall
+from images fails by **silent confabulation** (a misread SHA looks confident
+and plausible), which is why the factsheet and `c2m read` exist — never
+quote, edit, or hash-compare from pixels. Density that one model reads
+cleanly can corrupt on another; treat small fonts as per-model calibrated,
+not universal. Instructions and security policy are never rendered into
+images.
+
 ## Performance
 
 Layout geography is **stable**: cell positions persist in `.c2m/` and only
@@ -105,7 +135,8 @@ ingest (gitignore-aware) → tree-sitter symbols/imports (6 languages)
 → dependency graph + PageRank → hashed TF-IDF embeddings
 → query relevance (BM25 + cosine + personalized-PageRank diffusion + churn)
 → grid power-diagram treemap (persisted, stable geography)
-→ themed render (VLM theme / parchment theme) → PNG/SVG + legend + sidecar
+→ themed render (VLM / codex text-flow / parchment) → PNG/SVG + legend
+→ + factsheet & sidecar (exactness stays in text)
 ```
 
 Full design rationale, research grounding, and roadmap: [docs/DESIGN.md](docs/DESIGN.md).

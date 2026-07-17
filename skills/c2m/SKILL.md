@@ -1,6 +1,6 @@
 ---
 name: c2m
-description: Survey a whole repository in ~2k tokens as a semantic map image (Repository Atlas), then zoom to exact source via stable handles. Use at the START of any task in an unfamiliar or large repo — before grepping around — to learn where the relevant code lives, what depends on what, and where the trust hazards are.
+description: Cut context tokens by rendering it as images. Survey a whole repository in ~2k tokens as a semantic map image (Repository Atlas), zoom into codex tiles that carry the actual source, and resolve exact text via stable handles; `c2m paint` compresses ANY bulky text (docs, tool output, specs) into dense image pages. Use at the START of any task in an unfamiliar or large repo, or before ingesting any large text.
 ---
 
 # c2m — Repository Atlas
@@ -34,11 +34,15 @@ source of truth — exact code always comes from `c2m read` as text.
 
    ```bash
    c2m zoom R3            # writes a region tile image + prints a file/symbol roster
+   c2m zoom R3 --codex    # tile with each file's ACTUAL SOURCE typeset in its cell
    c2m zoom R3 --text     # roster only, no image
    c2m zoom F103          # file detail: symbols with S-handles, imports, hazards
    ```
 
-   Read the tile image the same way if one is written.
+   Read the tile image the same way if one is written. Prefer `--codex` when
+   you want to *read the region's code* (several files in one image, ~2–4×
+   cheaper than the same text); prefer the plain tile when you only need the
+   structure.
 
 4. **Get exact source as text** (never trust pixels for code):
 
@@ -49,10 +53,24 @@ source of truth — exact code always comes from `c2m read` as text.
    c2m locate "session|expiry"    # find handles by substring
    ```
 
+5. **Compress any other bulky text** (a long doc, tool output, a spec) before
+   ingesting it:
+
+   ```bash
+   c2m paint big-context.md --out-dir /tmp/pages   # or: cat text | c2m paint
+   ```
+
+   Then Read the page PNGs in order. Keep the printed **factsheet line** —
+   it carries the exact identifiers (paths, SHAs, IDs) as text; quote those
+   from the factsheet, never by transcribing them from the image. If paint
+   says text is cheaper, just read the text.
+
 ## Rules
 
-- The atlas is for *navigation*. Quote, edit, and reason only over `c2m read`
-  output (Layer 3 text), never over what you saw rendered in the image.
+- The atlas is for *navigation*; codex tiles and paint pages are for
+  *reading*. Quote, edit, hash-compare, and reason over `c2m read` output or
+  the factsheet (text), never over strings you transcribed from an image —
+  image misreads are silent and look plausible.
 - Handles are stable across runs and queries — safe to mention in commits,
   notes, and follow-up commands.
 - Re-run `c2m map "<new task>"` whenever your task changes; it re-elevates the
