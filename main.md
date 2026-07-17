@@ -47,11 +47,13 @@ Design a Rust tool (context2map) that converts repo/context into query-condition
 - [x] edited crates/c2m-render/src/theme_vlm.rs; edited crates/c2m-render/src/theme_vlm.rs; edited crates/c2m-render/src/theme…
 - [x] edited crates/c2m-render/src/theme_vlm.rs; edited crates/c2m-render/src/theme_vlm.rs; edited crates/c2m-render/src/theme…
 - [x] session ended (auto-checkpoint)
+- [x] wrote .github/workflows/ci.yml; wrote .github/workflows/release.yml
 
 ## Active Branches
 - main (primary)
 
 ## Notes
+- [2026-07-17 03:49 UTC] `wip`: wrote .github/workflows/ci.yml; wrote .github/workflows/release.yml
 - [2026-07-17 03:37 UTC] `wip`: session ended (auto-checkpoint)
 - [2026-07-17 03:30 UTC] `wip`: edited crates/c2m-render/src/theme_vlm.rs; edited crates/c2m-render/src/theme_vlm.rs; edited crates/c2m-render/src/theme…
 - [2026-07-17 03:27 UTC] `wip`: edited crates/c2m-render/src/theme_vlm.rs; edited crates/c2m-render/src/theme_vlm.rs; edited crates/c2m-render/src/theme…
