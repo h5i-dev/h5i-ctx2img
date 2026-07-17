@@ -14,10 +14,10 @@ source of truth — exact code always comes from `c2m read` as text.
 
 ## Workflow
 
-1. **Map the repo against your task** (auto-builds the index on first run):
+1. **Index the repo against your task** (auto-builds on first run):
 
    ```bash
-   c2m map "<one line describing your task>" --provider claude --budget 2000
+   c2m paint --index -q "<one line describing your task>" --provider claude --budget 2000
    ```
 
    stdout is the legend (region roster with handles + elevation). If it prints
@@ -75,7 +75,7 @@ source of truth — exact code always comes from `c2m read` as text.
   image misreads are silent and look plausible.
 - Handles are stable across runs and queries — safe to mention in commits,
   notes, and follow-up commands.
-- Re-run `c2m map "<new task>"` whenever your task changes; it re-elevates the
+- Re-run `c2m paint --index -q "<new task>"` whenever your task changes; it re-elevates the
   same geography in well under a second (warm cache), so map early and often.
 - `--json` on `map`/`zoom` gives `{atlas_path, legend, ...}` when you need to
   script it.

@@ -11,9 +11,11 @@ guaranteed-exact text through stable handles. Any other text becomes dense
 `paint` pages (measured on this repo's own design doc: **76% fewer tokens**).
 Written in Rust; a 5,000-file repo maps **cold in ~0.4 s**.
 
-![Repository map](assets/repo-map.svg)
+![Design doc as a text-bearing map](assets/design-map.png)
 
-*(this image is `c2m badge` run on this repo — regenerate it any time)*
+*(this tool's own 33k-char design document, painted as one ~3.6k-token map —
+**the full text is in the image**, sections are territories, and the darker
+cells are the ones most relevant to the query. `c2m paint docs/DESIGN.md`)*
 
 ## The idea
 
@@ -51,14 +53,18 @@ c2m paint DESIGN.md                   # markdown → one section map (headings =
 cat prompt.txt | c2m paint            # flat text → dense reflowed pages
 
 # The index specialist — navigate without reading (~2k tokens for a whole repo):
-c2m map "fix the session expiry bug"  # atlas.png + legend + handles
+c2m paint --index -q "fix expiry bug" # index only: atlas.png + legend + handles
 c2m zoom R3 --inscribe                # one region's full source, in-territory
 c2m read F103 --lines 40:120          # exact source, always text
 c2m locate "session"                  # find handles
 
 c2m render --out map.svg              # the pretty human map (parchment theme)
-c2m badge                             # README-sized hero image
+c2m badge                             # README-sized social image
 ```
+
+<img src="assets/repo-map.svg" alt="Parchment map of this repo" width="55%"/>
+
+*(`c2m badge`: the human-facing parchment theme of the same geography)*
 
 `c2m` never spends tokens on a picture that doesn't pay for itself: `map`
 falls back to a text roster on small repos, and `paint` refuses when text is
@@ -93,7 +99,7 @@ render), so any VLM-capable agent can use the CLI directly too.
 
 ## Provider-aware token budgeting
 
-`c2m map --provider claude --budget 2000` solves for the largest raster whose
+`c2m paint --index --provider claude --budget 2000` solves for the largest raster whose
 *provider-computed* cost fits the budget, snapped to the provider's patch grid
 so no tokens are wasted on padding:
 

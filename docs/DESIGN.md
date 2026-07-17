@@ -107,8 +107,9 @@ the escape hatch is what lets the default density be aggressive.
 dispatches on input shape and always carries the full text — directory → atlas
 folio (L1 overview + inscribe tiles per region, budget-governed, coverage
 reported); markdown → section map (headings become territories, query-banded);
-flat text → dense pages. `c2m map` remains the index-only specialist for
-navigation without reading. Original framing kept below for context:
+flat text → dense pages. The index-only atlas survives as `c2m paint --index`
+(the `map` subcommand was folded into it, 2026-07-16); prose below that says
+`c2m map` describes that mode. Original framing kept below for context:
 
 **Beyond repos — `c2m paint` is a peer product surface, not an afterthought.**
 The tool's real subject is *any text an agent must ingest*: system prompts, tool

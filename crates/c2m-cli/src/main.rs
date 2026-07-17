@@ -12,8 +12,8 @@ use std::path::PathBuf;
 #[command(
     name = "c2m",
     version,
-    about = "context2map: render agent context as images that cost a fraction of the tokens.\n\nMain command — c2m paint <input>: any text-shaped input becomes images that CARRY THE FULL TEXT,\nshaped by its structure (directory → atlas folio of full-source region tiles; markdown → section\nmap; flat text → dense pages), always with a verbatim factsheet.\n\nSpecialist — c2m map \"<task>\": index-only atlas (~2k tok) for navigating a repo without reading it.",
-    after_help = "repo navigation loop: c2m map \"<task>\" → read the atlas → c2m zoom R# [--inscribe] → c2m read F#\nrender/badge are human-facing; build/calibrate/bench are plumbing."
+    about = "context2map: render agent context as images that cost a fraction of the tokens.\n\nMain command — c2m paint <input>: any text-shaped input becomes images that CARRY THE FULL TEXT,\nshaped by its structure (directory → atlas folio of full-source region tiles; markdown → section\nmap; flat text → dense pages), always with a verbatim factsheet.\n\nIndex mode — c2m paint --index -q \"<task>\": index-only atlas (~2k tok) for navigating a repo without reading it.",
+    after_help = "repo navigation loop: c2m paint --index -q \"<task>\" → read the atlas → c2m zoom R# [--inscribe] → c2m read F#\nrender/badge are human-facing; build/calibrate/bench are plumbing."
 )]
 struct Cli {
     /// Repository root (default: current directory).
@@ -47,8 +47,13 @@ enum Cmd {
         #[arg(long)]
         budget: Option<u32>,
         /// Optional task/query: conditions region and section relevance.
-        #[arg(long, default_value = "")]
+        #[arg(long, short = 'q', default_value = "")]
         query: String,
+        /// Index-only mode (formerly `c2m map`): render just the overview
+        /// atlas + legend + handles (~2k tok) — navigate without reading.
+        /// Input defaults to the current directory.
+        #[arg(long)]
+        index: bool,
         /// Output directory for page PNGs (default: current directory).
         #[arg(long)]
         out_dir: Option<PathBuf>,
@@ -57,28 +62,6 @@ enum Cmd {
         force: bool,
         #[arg(long)]
         json: bool,
-    },
-    /// Render the query-conditioned atlas: image + legend + handles.
-    Map {
-        /// The task/query that conditions elevation (what you're working on).
-        query: String,
-        #[arg(long, value_enum, default_value = "claude")]
-        provider: Provider,
-        /// Image token budget for the atlas.
-        #[arg(long, default_value_t = 2000)]
-        budget: u32,
-        /// Atlas output path (default: .c2m/atlas.png).
-        #[arg(long)]
-        out: Option<PathBuf>,
-        /// Machine-readable output {atlas_path, legend, ...}.
-        #[arg(long)]
-        json: bool,
-        /// auto picks the cheaper of image vs text for this repo size.
-        #[arg(long, value_enum, default_value = "auto")]
-        representation: ops::Representation,
-        /// Skip git history signals (churn, co-change).
-        #[arg(long)]
-        no_history: bool,
     },
     /// Zoom into a region (R#: image tile + roster) or file (F#: symbol detail).
     Zoom {
@@ -170,24 +153,6 @@ fn main() -> anyhow::Result<()> {
     let repo = cli.repo.as_deref();
     match cli.cmd {
         Cmd::Build => ops::build(repo),
-        Cmd::Map {
-            query,
-            provider,
-            budget,
-            out,
-            json,
-            representation,
-            no_history,
-        } => ops::map(
-            repo,
-            &query,
-            provider,
-            budget,
-            out.as_deref(),
-            json,
-            representation,
-            no_history,
-        ),
         Cmd::Zoom {
             handle,
             budget,
@@ -219,6 +184,28 @@ fn main() -> anyhow::Result<()> {
             no_reflow,
             budget,
             query,
+            index,
+            out_dir,
+            force,
+            json,
+        } if index => ops::index_atlas(
+            input.as_deref().or(repo),
+            &query,
+            provider,
+            budget.unwrap_or(2000),
+            out_dir.map(|d| d.join("atlas.png")).as_deref(),
+            json,
+            ops::Representation::Auto,
+            false,
+        ),
+        Cmd::Paint {
+            input,
+            provider,
+            font_px,
+            no_reflow,
+            budget,
+            query,
+            index: _,
             out_dir,
             force,
             json,

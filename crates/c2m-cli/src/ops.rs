@@ -81,7 +81,7 @@ pub enum Representation {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn map(
+pub fn index_atlas(
     repo: Option<&Path>,
     query: &str,
     provider: Provider,
@@ -221,7 +221,7 @@ pub fn zoom(
 
     let entry = registry
         .resolve(handle)
-        .with_context(|| format!("unknown handle {handle} (run `c2m map` first)"))?
+        .with_context(|| format!("unknown handle {handle} (run `c2m paint --index` first)"))?
         .clone();
 
     match entry.kind {
