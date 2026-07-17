@@ -104,6 +104,51 @@ impl Default for SceneConfig {
 /// Inscribe-mode file loader: repo-relative path -> file contents.
 pub type ContentLoader<'a> = dyn Fn(&str) -> Option<String> + 'a;
 
+/// Squarify with capacity feedback: areas proportional to characters are
+/// not enough, because a box's true capacity depends on its shape (the
+/// header strip costs width × 2 rows, so wide boxes hold fewer chars per
+/// px² than tall ones). Iterate: layout → measure capacity at real font
+/// metrics → reweight by need/capacity → re-layout. Deterministic.
+fn balanced_squarify(
+    chars: &[usize],
+    bounds: RectBox,
+    canvas_w: f32,
+    canvas_h: f32,
+    text_px: f32,
+) -> Vec<RectBox> {
+    let advance = crate::text::measure("M", text_px, crate::display::FontKind::Mono).max(1.0);
+    let line_h = text_px * 1.22;
+    let pad = text_px * 0.35;
+    let hsize = (text_px * 1.2).max(12.0);
+    let header_px = hsize * 2.2;
+
+    let capacity = |r: &RectBox| -> f32 {
+        let w_px = r.w * canvas_w - 2.0 * pad;
+        let h_px = r.h * canvas_h - header_px - pad;
+        let cols = (w_px / advance).floor().max(0.0);
+        let rows = (h_px / line_h).floor().max(0.0);
+        cols * rows
+    };
+
+    let mut weights: Vec<f32> = chars.iter().map(|&c| c.max(40) as f32).collect();
+    let mut rects = squarify(&weights, bounds);
+    for _ in 0..8 {
+        let mut worst: f32 = 1.0;
+        for (i, r) in rects.iter().enumerate() {
+            let cap = capacity(r).max(1.0);
+            let need = chars[i].max(40) as f32 * 1.03; // breathing room
+            let ratio = (need / cap).clamp(0.5, 2.0);
+            worst = worst.max(ratio.max(1.0 / ratio));
+            weights[i] *= ratio.powf(0.85);
+        }
+        rects = squarify(&weights, bounds);
+        if worst < 1.05 {
+            break;
+        }
+    }
+    rects
+}
+
 fn rect_poly(r: &RectBox) -> Vec<(f32, f32)> {
     vec![
         (r.x, r.y),
@@ -349,11 +394,14 @@ pub fn build_doc(sections: &[DocSection], cfg: &SceneConfig) -> Scene {
 /// Box layout for documents: each section is a rectangle sized by its
 /// text, packed edge-to-edge (squarified treemap), content ↵-reflowed.
 fn build_doc_boxes(sections: &[DocSection], cfg: &SceneConfig) -> Scene {
-    let weights: Vec<f32> = sections
-        .iter()
-        .map(|s| s.text.len() as f32 + 600.0)
-        .collect();
-    let rects = squarify(&weights, BOX_BOUNDS);
+    let chars: Vec<usize> = sections.iter().map(|s| s.text.len()).collect();
+    let rects = balanced_squarify(
+        &chars,
+        BOX_BOUNDS,
+        cfg.width as f32,
+        cfg.height as f32,
+        cfg.text_px,
+    );
     let cells: Vec<CellVis> = sections
         .iter()
         .zip(&rects)
@@ -431,8 +479,14 @@ pub fn build_l2(
                         .unwrap_or_default()
                 })
                 .collect();
-            let weights: Vec<f32> = sources.iter().map(|s| s.len() as f32 + 500.0).collect();
-            let rects = squarify(&weights, BOX_BOUNDS);
+            let chars: Vec<usize> = sources.iter().map(|s| s.len()).collect();
+            let rects = balanced_squarify(
+                &chars,
+                BOX_BOUNDS,
+                cfg.width as f32,
+                cfg.height as f32,
+                cfg.text_px,
+            );
             let cells: Vec<CellVis> = shown
                 .iter()
                 .zip(&rects)

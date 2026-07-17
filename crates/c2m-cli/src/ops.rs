@@ -574,7 +574,7 @@ fn fit_budget(chars: usize, n_boxes: usize, font_px: f32, budget: u32) -> u32 {
     let advance = c2m_render::text::measure("M", font_px, c2m_render::display::FontKind::Mono);
     let line_h = font_px * 1.22;
     let header_px2 = (font_px * 1.2 * 2.4) * 420.0; // header strip per box
-    let px2 = chars as f32 * advance * line_h * 1.18 + n_boxes as f32 * header_px2;
+    let px2 = chars as f32 * advance * line_h * 1.08 + n_boxes as f32 * header_px2;
     ((px2 / 750.0) as u32).clamp(500, budget)
 }
 
