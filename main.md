@@ -36,11 +36,13 @@ Design a Rust tool (context2map) that converts repo/context into query-condition
 - [x] wrote paint_block.rs; edited crates/c2m-core/src/sections.rs; edited crates/c2m-cli/src/main.rs
 - [x] edited crates/c2m-core/src/sections.rs; edited crates/c2m-cli/src/main.rs; edited crates/c2m-cli/src/ops.rs
 - [x] edited crates/c2m-cli/src/main.rs; edited crates/c2m-cli/src/ops.rs; edited crates/c2m-cli/src/main.rs
+- [x] edited crates/c2m-cli/src/ops.rs; edited crates/c2m-cli/src/main.rs; wrote crates/c2m-layout/src/rect.rs
 
 ## Active Branches
 - main (primary)
 
 ## Notes
+- [2026-07-17 02:46 UTC] `wip`: edited crates/c2m-cli/src/ops.rs; edited crates/c2m-cli/src/main.rs; wrote crates/c2m-layout/src/rect.rs
 - [2026-07-17 02:36 UTC] `wip`: edited crates/c2m-cli/src/main.rs; edited crates/c2m-cli/src/ops.rs; edited crates/c2m-cli/src/main.rs
 - [2026-07-17 02:31 UTC] `wip`: edited crates/c2m-core/src/sections.rs; edited crates/c2m-cli/src/main.rs; edited crates/c2m-cli/src/ops.rs
 - [2026-07-17 02:25 UTC] `wip`: wrote paint_block.rs; edited crates/c2m-core/src/sections.rs; edited crates/c2m-cli/src/main.rs
