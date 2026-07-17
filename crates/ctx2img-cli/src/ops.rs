@@ -190,7 +190,7 @@ fn content_tokens(chars: usize, n_boxes: usize, font_px: f32) -> u32 {
     let advance =
         ctx2img_render::text::measure("M", font_px, ctx2img_render::display::FontKind::Mono);
     let line_h = font_px * 1.22;
-    let header_px2 = (font_px * 1.2 * 2.4) * 420.0; // header strip per box
+    let header_px2 = (font_px * 1.2 * 3.4) * 420.0; // header strip + spill-marker row per box
     let px2 = chars as f32 * advance * line_h * 1.08 + n_boxes as f32 * header_px2;
     (px2 / 750.0) as u32
 }

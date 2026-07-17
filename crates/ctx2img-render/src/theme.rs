@@ -129,7 +129,7 @@ pub fn flow_text_ops(
     let advance = text::measure("M", size_px, font).max(1.0);
     let line_h = size_px * 1.22;
     let pad = size_px * 0.35;
-    let (_, _, _, by1) = poly_bbox_px(poly, canvas_w, canvas_h);
+    let (bx0, _, bx1, by1) = poly_bbox_px(poly, canvas_w, canvas_h);
 
     let mut ops = Vec::new();
     let mut consumed = 0usize;
@@ -137,7 +137,9 @@ pub fn flow_text_ops(
     let mut pending: Option<(String, bool)> = None;
     let mut y = start_y_px;
 
-    while y + line_h < by1 - pad && (consumed < lines.len() || pending.is_some()) {
+    // the bottom row is reserved for the spill marker, so it never
+    // overprints the last body line
+    while y + 2.0 * line_h < by1 - pad && (consumed < lines.len() || pending.is_some()) {
         y += line_h;
         // the row must be inside the polygon over the text's full height
         let top = row_interval(poly, canvas_w, canvas_h, y - size_px);
@@ -191,18 +193,30 @@ pub fn flow_text_ops(
     }
 
     if consumed < lines.len() || pending.is_some() {
-        ops.push(Op::Text {
-            pos: (
-                poly.iter().map(|p| p.0).sum::<f32>() / poly.len() as f32,
-                (by1 - pad) / canvas_h,
-            ),
-            text: format!("⋯ +{} lines · {spill_note}", lines.len() - consumed),
-            size_px: size_px.max(10.0),
-            color: dim,
-            font: FontKind::Sans,
-            align: TextAlign::Center,
-            halo: None,
-        });
+        // the marker must stay inside the cell: fall back to a compact
+        // form in narrow boxes, drop it entirely when even that spills
+        // (the legend still carries the cell)
+        let msize = size_px.max(10.0);
+        let inner_w = (bx1 - bx0) - 2.0 * pad;
+        let full = format!("⋯ +{} lines · {spill_note}", lines.len() - consumed);
+        let text = if label_box(&full, msize, FontKind::Sans).0 <= inner_w {
+            Some(full)
+        } else {
+            let short = format!("⋯+{}", lines.len() - consumed);
+            (label_box(&short, msize, FontKind::Sans).0 <= inner_w).then_some(short)
+        };
+        let fits_below_body = by1 - pad - start_y_px >= line_h;
+        if let (Some(text), true) = (text, fits_below_body) {
+            ops.push(Op::Text {
+                pos: ((bx0 + bx1) / 2.0 / canvas_w, (by1 - pad) / canvas_h),
+                text,
+                size_px: msize,
+                color: dim,
+                font: FontKind::Sans,
+                align: TextAlign::Center,
+                halo: None,
+            });
+        }
     }
     (ops, consumed)
 }

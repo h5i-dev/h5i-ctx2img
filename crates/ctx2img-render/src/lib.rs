@@ -177,4 +177,67 @@ mod tests {
         let png_b = render_png(&s, &VlmTheme).unwrap();
         assert_eq!(png_a, png_b, "inscribe renders deterministically");
     }
+
+    /// Regression (h5i MANUAL shape): a page crowded with tiny sections
+    /// beside a giant one must never paint a cell's header, body, or spill
+    /// marker outside that cell's rectangle.
+    #[test]
+    fn doc_boxes_never_paint_text_outside_their_cell() {
+        use crate::display::{Op, TextAlign};
+        let mut sections = vec![scene::DocSection {
+            title: "giant aggregate tail".into(),
+            text: "lorem ipsum dolor sit amet consectetur ".repeat(4000),
+            band: 2,
+        }];
+        for i in 0..18 {
+            sections.push(scene::DocSection {
+                title: format!("tiny section {i} with a fairly long heading"),
+                text: format!("[14:0{i}:01] NOTE: one-liner {i}"),
+                band: 2,
+            });
+        }
+        let cfg = SceneConfig {
+            width: 760,
+            height: 760,
+            text_px: 9.0,
+            boxes: true,
+            ..Default::default()
+        };
+        let s = scene::build_doc(&sections, &cfg);
+        let (w, h) = (s.width as f32, s.height as f32);
+        for op in &VlmTheme.overlay(&s).ops {
+            let Op::Text {
+                pos,
+                text,
+                size_px,
+                font,
+                align,
+                ..
+            } = op
+            else {
+                continue;
+            };
+            let (tw, _) = theme::label_box(text, *size_px, *font);
+            let (x, y) = (pos.0 * w, pos.1 * h);
+            let (x0, x1) = match align {
+                TextAlign::Center => (x - tw / 2.0, x + tw / 2.0),
+                TextAlign::Left => (x, x + tw),
+            };
+            let (top, bot) = (y - size_px, y + size_px * 0.35);
+            let cell = s
+                .cells
+                .iter()
+                .map(|c| theme::poly_bbox_px(&c.poly, w, h))
+                .find(|&(bx0, by0, bx1, by1)| x >= bx0 && x <= bx1 && y >= by0 && y <= by1)
+                .expect("text op anchored inside some cell");
+            let (bx0, by0, bx1, by1) = cell;
+            let eps = 2.0;
+            assert!(
+                x0 >= bx0 - eps && x1 <= bx1 + eps && top >= by0 - eps && bot <= by1 + eps,
+                "text {text:?} spans ({x0:.0}..{x1:.0}, {top:.0}..{bot:.0}) leaking outside its cell ({bx0:.0}..{bx1:.0}, {by0:.0}..{by1:.0})"
+            );
+        }
+        let png = render_png(&s, &VlmTheme).unwrap();
+        assert!(png.len() > 2000);
+    }
 }

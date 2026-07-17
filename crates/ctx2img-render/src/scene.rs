@@ -124,13 +124,28 @@ fn balanced_squarify(
 
     let capacity = |r: &RectBox| -> f32 {
         let w_px = r.w * canvas_w - 2.0 * pad;
-        let h_px = r.h * canvas_h - header_px - pad;
+        // the flow engine reserves one bottom row for the spill marker
+        let h_px = r.h * canvas_h - header_px - pad - line_h;
         let cols = (w_px / advance).floor().max(0.0);
         let rows = (h_px / line_h).floor().max(0.0);
         cols * rows
     };
 
+    // no box may shrink below header + spill-marker size, or its own
+    // labels would spill onto neighbors; expressed as an area floor
+    // relative to the whole canvas
+    let min_frac = ((hsize * 6.0) * (hsize * 3.2)) / (canvas_w * canvas_h);
+    let floor_weights = |weights: &mut [f32]| {
+        for _ in 0..4 {
+            let total: f32 = weights.iter().sum();
+            for w in weights.iter_mut() {
+                *w = w.max(min_frac * total);
+            }
+        }
+    };
+
     let mut weights: Vec<f32> = chars.iter().map(|&c| c.max(40) as f32).collect();
+    floor_weights(&mut weights);
     let mut rects = squarify(&weights, bounds);
     for _ in 0..8 {
         let mut worst: f32 = 1.0;
@@ -141,6 +156,7 @@ fn balanced_squarify(
             worst = worst.max(ratio.max(1.0 / ratio));
             weights[i] *= ratio.powf(0.85);
         }
+        floor_weights(&mut weights);
         rects = squarify(&weights, bounds);
         if worst < 1.05 {
             break;

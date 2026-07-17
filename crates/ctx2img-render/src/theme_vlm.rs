@@ -252,7 +252,29 @@ impl MachinePalette {
             // below it; ellipsized to the box so it never crosses neighbors
             if let Some(lines) = &c.text {
                 let hsize = (scene.text_px * 1.2).max(MIN_LABEL_PX);
-                let (bx0, by0, bx1, _) = poly_bbox_px(&c.poly, w, h);
+                let (bx0, by0, bx1, by1) = poly_bbox_px(&c.poly, w, h);
+                // a cell too small for even an ellipsized header renders as
+                // its bare handle, shrunk to fit — never text over neighbors
+                // (the legend roster carries title and content pointer)
+                if by1 - by0 < hsize * 2.2 || bx1 - bx0 < hsize * 4.2 {
+                    let mut size = hsize.min((by1 - by0) * 0.6);
+                    let (tw, _) = label_box(&c.handle, size, FontKind::SansBold);
+                    if tw > (bx1 - bx0) * 0.86 {
+                        size *= (bx1 - bx0) * 0.86 / tw;
+                    }
+                    if size >= 7.0 {
+                        dl.push(Op::Text {
+                            pos: ((bx0 + bx1) / 2.0 / w, (by0 + by1) / 2.0 / h + size * 0.35 / h),
+                            text: c.handle.clone(),
+                            size_px: size,
+                            color: self.ink,
+                            font: FontKind::SansBold,
+                            align: TextAlign::Center,
+                            halo: Some(self.halo),
+                        });
+                    }
+                    continue;
+                }
                 let hy = by0 + hsize * 1.5;
                 let mut header = format!("{} {} ▲{}", c.handle, c.name, c.band);
                 let tags = hazard::tags(c.hazards);
