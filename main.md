@@ -68,11 +68,13 @@ Design a Rust tool (context2map) that converts repo/context into query-condition
 - [x] edited crates/ctx2img-cli/src/ops.rs; edited crates/ctx2img-cli/src/main.rs; edited README.md
 - [x] README acknowledges pxpipe with a sharpened contrast table
 - [x] edited crates/ctx2img-cli/src/main.rs; edited README.md; edited README.md
+- [x] edited README.md; edited README.md
 
 ## Active Branches
 - main (primary)
 
 ## Notes
+- [2026-07-17 13:31 UTC] `fix-repo`: edited README.md; edited README.md
 - [2026-07-17 13:16 UTC] `fix-repo`: edited crates/ctx2img-cli/src/main.rs; edited README.md; edited README.md
 - [2026-07-17 13:16 UTC] `fix-repo`: README acknowledges pxpipe with a sharpened contrast table
 - [2026-07-17 13:07 UTC] `fix-repo`: edited crates/ctx2img-cli/src/ops.rs; edited crates/ctx2img-cli/src/main.rs; edited README.md
