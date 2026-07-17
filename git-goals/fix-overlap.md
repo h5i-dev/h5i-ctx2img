@@ -1,3 +1,3 @@
 # Git Branch Goal: fix-overlap
 
-Fix box overlap regression in ctx2img rendering (small corrupted box overlapping others)
+Shrink white space in section-map pages: size canvas to actual content so boxes are not over-tall (MANUAL-map2.png)
