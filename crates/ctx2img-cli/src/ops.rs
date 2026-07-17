@@ -62,22 +62,6 @@ fn save_last_query(ws: &Workspace, query: &str) {
     let _ = std::fs::write(ws.dir.join("last-query.txt"), query);
 }
 
-// ---------------------------------------------------------------- build
-
-pub fn build(repo: Option<&Path>) -> Result<()> {
-    let ctx = open(repo)?;
-    let built = ctx.ws.build("", ctx.now, true)?;
-    print_stats(&built);
-    println!(
-        "indexed {} files, {} regions, {} edges → {}",
-        built.analysis.files.len(),
-        built.analysis.tree.regions.len(),
-        built.analysis.graph.edges.len(),
-        ctx.ws.dir.display()
-    );
-    Ok(())
-}
-
 // ---------------------------------------------------------------- map
 
 fn seed_for(name: &str) -> u64 {
@@ -192,61 +176,23 @@ fn find_handles(repo: Option<&Path>, pattern: &str) -> Result<()> {
 
 // ---------------------------------------------------------------- render / badge
 
-#[allow(clippy::too_many_arguments)]
-pub fn render(
-    repo: Option<&Path>,
-    query: &str,
-    theme_name: &str,
-    format: &str,
-    out: Option<&Path>,
-    width: u32,
-    height: u32,
-    title: Option<&str>,
-) -> Result<()> {
-    let ctx = open(repo)?;
-    let built = ctx.ws.build(query, ctx.now, true)?;
-    print_stats(&built);
-    let theme: &dyn Theme = match theme_name {
-        "vlm" | "stark" => &VlmTheme,
-        "warm" => &WarmTheme,
-        _ => &ParchmentTheme,
-    };
-    let name = repo_name(&ctx.ws);
-    let mut saved = SavedSites::load(&ctx.ws.layout_path());
-    let cfg = SceneConfig {
-        width,
-        height,
-        title: title
-            .map(str::to_string)
-            .unwrap_or_else(|| format!("The Realm of {name}")),
-        seed: seed_for(&name),
-        ..Default::default()
-    };
-    let s = scene::build_l1(&built, &mut saved, &cfg);
-    saved.save(&ctx.ws.layout_path())?;
-
-    let path = out
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| PathBuf::from(format!("repo-map.{format}")));
-    match format {
-        "png" => std::fs::write(&path, render_png(&s, theme)?)?,
-        "svg" => std::fs::write(&path, render_svg(&s, theme))?,
-        other => bail!("unknown format {other} (png|svg)"),
-    }
-    println!("map written to {}", path.display());
-    Ok(())
-}
-
 /// Token budget that a box layout actually NEEDS for `chars` of content at
 /// `font_px` — canvases are sized to content, not to the allowance, so
 /// boxes carry no built-in slack (and unused budget becomes savings).
 fn fit_budget(chars: usize, n_boxes: usize, font_px: f32, budget: u32) -> u32 {
+    content_tokens(chars, n_boxes, font_px).clamp(500.min(budget), budget)
+}
+
+/// Unclamped token estimate for `chars` of box-laid content at `font_px`.
+/// Used for pagination arithmetic, where a floor would inflate small
+/// sections and split pages prematurely.
+fn content_tokens(chars: usize, n_boxes: usize, font_px: f32) -> u32 {
     let advance =
         ctx2img_render::text::measure("M", font_px, ctx2img_render::display::FontKind::Mono);
     let line_h = font_px * 1.22;
     let header_px2 = (font_px * 1.2 * 2.4) * 420.0; // header strip per box
     let px2 = chars as f32 * advance * line_h * 1.08 + n_boxes as f32 * header_px2;
-    ((px2 / 750.0) as u32).clamp(500, budget)
+    (px2 / 750.0) as u32
 }
 
 // ---------------------------------------------------------------- paint
@@ -273,6 +219,16 @@ pub fn paint(
     theme: &str,
     layout: &str,
 ) -> Result<()> {
+    // the decorative human map is a theme, not a command
+    if theme == "parchment" {
+        let root = input
+            .map(Path::to_path_buf)
+            .unwrap_or(std::env::current_dir()?);
+        if !root.is_dir() {
+            bail!("--theme parchment paints the human map of a DIRECTORY (got a file/stdin)");
+        }
+        return paint_parchment(&root, query, out_dir);
+    }
     if let Some(p) = input {
         if p.is_dir() {
             return paint_repo(
@@ -300,8 +256,22 @@ pub fn paint(
         bail!("nothing to paint (empty input)");
     }
 
-    // structured text → document map (unless the caller forces flat pages)
-    if !no_reflow {
+    // structured text → document map — but ONLY for actual prose formats.
+    // Code files often contain `# `-lines inside string literals; treating
+    // them as headings would route source through the section map and cost
+    // coverage. Code takes the flat path, which paginates losslessly.
+    let prose = match input {
+        Some(p) => matches!(
+            p.extension().and_then(|e| e.to_str()).unwrap_or(""),
+            "md" | "markdown" | "rst" | "txt"
+        ),
+        // stdin: require unambiguous markdown shape
+        None => {
+            text.lines().take(3).any(|l| l.starts_with("# "))
+                && text.lines().filter(|l| l.starts_with('#')).count() >= 3
+        }
+    };
+    if !no_reflow && prose {
         if let Some(sections) = ctx2img_core::sections::split_markdown(&text) {
             return paint_doc(
                 &text,
@@ -425,62 +395,99 @@ fn paint_doc(
         );
         return Ok(());
     }
-    let effective = if force { requested } else { effective.max(500) };
-    let total_chars: usize = sections.iter().map(|s| s.text.len()).sum();
-    let effective = if layout != "organic" {
-        effective.min(fit_budget(
-            total_chars,
-            sections.len(),
-            font_px.max(8.0),
-            effective,
-        ))
-    } else {
-        effective
-    };
+    let page_cap = if force { requested } else { effective.max(500) };
+    let font = font_px.max(8.0);
     let bands = ctx2img_core::sections::band_sections(sections, query);
-    let doc_sections: Vec<scene::DocSection> = sections
-        .iter()
-        .zip(&bands)
-        .map(|(s, &band)| scene::DocSection {
-            title: s.title.clone(),
-            text: s.text.clone(),
-            band,
-        })
-        .collect();
-    let (w, h) = provider.solve(effective, 1.0);
-    let cfg = SceneConfig {
-        width: w,
-        height: h,
-        title: source_name.to_string(),
-        seed: seed_for(source_name),
-        text_px: font_px.max(8.0),
-        boxes: layout != "organic",
-        ..Default::default()
-    };
-    let s = scene::build_doc(&doc_sections, &cfg);
-    let png = render_png(&s, theme)?;
+
+    // Pagination: a document larger than one page's budget gets MORE PAGES,
+    // never silent truncation — coverage is always 100% at section level.
+    // Greedy grouping in document order; an oversized section gets its own
+    // page (spilling internally, with an explicit marker).
+    let mut groups: Vec<Vec<usize>> = Vec::new();
+    let mut cur: Vec<usize> = Vec::new();
+    let mut cur_tok = 0u32;
+    for (i, s) in sections.iter().enumerate() {
+        let t = content_tokens(s.text.len(), 1, font);
+        // 8% tolerance: better one slightly-fuller page than a near-empty tail
+        if !cur.is_empty() && cur_tok + t > page_cap + page_cap / 12 {
+            groups.push(std::mem::take(&mut cur));
+            cur_tok = 0;
+        }
+        cur.push(i);
+        cur_tok += t;
+    }
+    if !cur.is_empty() {
+        groups.push(cur);
+    }
+
     let dir = out_dir
         .map(Path::to_path_buf)
         .unwrap_or_else(|| PathBuf::from("."));
     std::fs::create_dir_all(&dir)?;
-    let path = dir.join(format!("{source_name}-map.png"));
-    std::fs::write(&path, &png)?;
 
-    let image_tokens = provider.tokens(w, h);
+    let mut pages: Vec<(PathBuf, u32, u32)> = Vec::new();
+    let mut image_tokens = 0u32;
+    let mut page_of = vec![0usize; sections.len()];
+    for (pi, group) in groups.iter().enumerate() {
+        let doc_sections: Vec<scene::DocSection> = group
+            .iter()
+            .map(|&i| scene::DocSection {
+                title: sections[i].title.clone(),
+                text: sections[i].text.clone(),
+                band: bands[i],
+            })
+            .collect();
+        for &i in group {
+            page_of[i] = pi + 1;
+        }
+        let group_chars: usize = group.iter().map(|&i| sections[i].text.len()).sum();
+        // canvas fits the group's real content — a small tail page becomes a
+        // small (cheap, dense) image, not a big white one
+        let page_budget =
+            content_tokens(group_chars, group.len(), font).clamp(300.min(page_cap), page_cap);
+        let (w, h) = provider.solve(page_budget, 1.0);
+        let cfg = SceneConfig {
+            width: w,
+            height: h,
+            title: source_name.to_string(),
+            seed: seed_for(source_name) ^ pi as u64,
+            text_px: font,
+            boxes: layout != "organic",
+            ..Default::default()
+        };
+        let s = scene::build_doc(&doc_sections, &cfg);
+        let png = render_png(&s, theme)?;
+        let path = if groups.len() == 1 {
+            dir.join(format!("{source_name}-map.png"))
+        } else {
+            dir.join(format!("{source_name}-map{}.png", pi + 1))
+        };
+        std::fs::write(&path, &png)?;
+        image_tokens += provider.tokens(w, h);
+        pages.push((path, w, h));
+    }
+
     let sheet =
         ctx2img_core::factsheet::render_sheet(&ctx2img_core::factsheet::extract(full_text, 40));
-    let toc: Vec<String> = doc_sections
+    let toc: Vec<String> = sections
         .iter()
         .enumerate()
-        .map(|(i, sec)| format!("§{} {} ▲{}", i + 1, sec.title, sec.band))
+        .map(|(i, sec)| {
+            if groups.len() == 1 {
+                format!("§{} {} ▲{}", i + 1, sec.title, bands[i])
+            } else {
+                format!("§{} {} ▲{} (p{})", i + 1, sec.title, bands[i], page_of[i])
+            }
+        })
         .collect();
     report_paint(
         json,
         &format!(
-            "ctx2img paint (this user's local tool) rendered this document as a section map — {} territories, each carrying its full text. Read every territory.",
-            doc_sections.len()
+            "ctx2img paint (this user's local tool) rendered this document as {} section-map page(s) — {} territories, each carrying its full text. Read every territory, pages in order.",
+            groups.len(),
+            sections.len()
         ),
-        &[(path, w, h)],
+        &pages,
         provider,
         image_tokens,
         text_tokens,
@@ -494,6 +501,39 @@ fn paint_doc(
 /// carry the FULL SOURCE of each region, highest-relevance regions first,
 /// until the token budget is spent. Coverage is reported, never implied.
 #[allow(clippy::too_many_arguments)]
+/// The human-facing map: organic Voronoi geography, parchment styling,
+/// infinite-zoom SVG. Cosmetic output; carries no source text.
+fn paint_parchment(root: &Path, query: &str, out_dir: Option<&Path>) -> Result<()> {
+    let input = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let repo_root = discover_root(&input);
+    let ws = Workspace::open(&repo_root)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let built = ws.build(query, now, true)?;
+    print_stats(&built);
+    let name = repo_name(&ws);
+    let mut saved = SavedSites::load(&ws.layout_path());
+    let cfg = SceneConfig {
+        width: 1400,
+        height: 1000,
+        title: format!("The Realm of {name}"),
+        seed: seed_for(&name),
+        ..Default::default()
+    };
+    let s = scene::build_l1(&built, &mut saved, &cfg);
+    saved.save(&ws.layout_path())?;
+    let dir = out_dir
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+    std::fs::create_dir_all(&dir)?;
+    let path = dir.join(format!("{name}-parchment.svg"));
+    std::fs::write(&path, render_svg(&s, &ParchmentTheme))?;
+    println!("map written to {}", path.display());
+    Ok(())
+}
+
 /// Walk up from `start` to the enclosing repo root (.git or .ctx2img marker).
 /// LOC in scope: whole repo, or just the focused subtree.
 fn order2_total(built: &Built, subtree: &Option<String>) -> u64 {

@@ -76,4 +76,4 @@ source of truth — exact code always comes from `ctx2img read` as text.
 - `--json` on `paint` gives `{pages, legend_path, ...}` when you need to
   script it.
 - For a human-facing map (README, PR description):
-  `ctx2img render --out map.svg` (parchment theme).
+  `ctx2img paint . --theme parchment`.

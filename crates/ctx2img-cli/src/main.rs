@@ -13,7 +13,7 @@ use std::path::PathBuf;
     name = "ctx2img",
     version,
     about = "ctx2img: render agent context as images that cost a fraction of the tokens.\n\nMain command — ctx2img paint <input>: any text-shaped input becomes images that CARRY THE FULL TEXT,\nshaped by its structure (directory → atlas folio of full-source region tiles; markdown → section\nmap; flat text → dense pages), always with a verbatim factsheet.\n\nNavigation mode — ctx2img paint <dir> --budget 2000 -q \"<task>\": at a small budget the folio degrades to the index atlas (or a text roster if that's cheaper).",
-    after_help = "repo navigation loop: ctx2img paint . --budget 2000 -q \"<task>\" → read the atlas → ctx2img paint <dir> → ctx2img read F#\nrender is human-facing; build/calibrate/bench are plumbing."
+    after_help = "repo navigation loop: ctx2img paint . --budget 2000 -q \"<task>\" → read the atlas → ctx2img paint <dir> → ctx2img read F#\n--theme parchment is the human map; calibrate/bench are plumbing."
 )]
 struct Cli {
     /// Repository root (default: current directory).
@@ -49,9 +49,9 @@ enum Cmd {
         /// Optional task/query: conditions region and section relevance.
         #[arg(long, short = 'q', default_value = "")]
         query: String,
-        /// Machine palette: `vlm` (stark black-on-white default), `warm`
-        /// (parchment-flavored), or `dark` (white-on-black) — candidates
-        /// share one grammar and are A/B'd by `ctx2img calibrate`.
+        /// `vlm` (stark black-on-white default), `warm`, `dark` — machine
+        /// palettes sharing one grammar, A/B'd by `ctx2img calibrate` — or
+        /// `parchment`: the decorative human map of a directory (SVG).
         #[arg(long, default_value = "vlm")]
         theme: String,
         /// Territory layout for text-bearing maps: `boxes` (rectangular,
@@ -80,26 +80,6 @@ enum Cmd {
         #[arg(long)]
         find: Option<String>,
     },
-    /// Human-facing map (parchment theme by default).
-    Render {
-        /// Optional query to condition elevation (default: importance).
-        #[arg(long, default_value = "")]
-        query: String,
-        #[arg(long, default_value = "parchment")]
-        theme: String,
-        #[arg(long, default_value = "svg")]
-        format: String,
-        #[arg(long)]
-        out: Option<PathBuf>,
-        #[arg(long, default_value_t = 1400)]
-        width: u32,
-        #[arg(long, default_value_t = 1000)]
-        height: u32,
-        #[arg(long)]
-        title: Option<String>,
-    },
-    /// (Re)index the repository into .ctx2img/ (map does this implicitly).
-    Build,
     /// Legibility probes on a synthetic repo (offline bundle or --live).
     Calibrate {
         /// Where to generate the synthetic repo (default: temp dir).
@@ -133,7 +113,6 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let repo = cli.repo.as_deref();
     match cli.cmd {
-        Cmd::Build => ops::build(repo),
         Cmd::Read {
             target,
             lines,
@@ -163,24 +142,6 @@ fn main() -> anyhow::Result<()> {
             json,
             &theme,
             &layout,
-        ),
-        Cmd::Render {
-            query,
-            theme,
-            format,
-            out,
-            width,
-            height,
-            title,
-        } => ops::render(
-            repo,
-            &query,
-            &theme,
-            &format,
-            out.as_deref(),
-            width,
-            height,
-            title.as_deref(),
         ),
         Cmd::Calibrate {
             dir,
