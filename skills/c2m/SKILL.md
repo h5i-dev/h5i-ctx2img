@@ -17,7 +17,7 @@ source of truth — exact code always comes from `c2m read` as text.
 1. **Index the repo against your task** (auto-builds on first run):
 
    ```bash
-   c2m paint --index -q "<one line describing your task>" --provider claude --budget 2000
+   c2m paint . --budget 2000 -q "<one line describing your task>"
    ```
 
    stdout is the legend (region roster with handles + elevation). If it prints
@@ -30,19 +30,15 @@ source of truth — exact code always comes from `c2m read` as text.
    their top files. `⚠net/exec/secrets/eval` tags mark files that touch the
    outside world — relevant for anything security-adjacent.
 
-3. **Zoom one level** when a region looks right:
+3. **Focus where the task points** — paint just that module or file:
 
    ```bash
-   c2m zoom R3            # writes a region tile image + prints a file/symbol roster
-   c2m zoom R3 --inscribe    # tile with each file's ACTUAL SOURCE typeset in its cell
-   c2m zoom R3 --text     # roster only, no image
-   c2m zoom F103          # file detail: symbols with S-handles, imports, hazards
+   c2m paint src/auth -q "<task>"   # one module's FULL SOURCE as image tiles
+   c2m paint src/auth/session.rs    # a single file as dense pages
    ```
 
-   Read the tile image the same way if one is written. Prefer `--inscribe` when
-   you want to *read the region's code* (several files in one image, ~2–4×
-   cheaper than the same text); prefer the plain tile when you only need the
-   structure.
+   Subdirectory paints share the whole repo's handles and relevance, so the
+   tiles line up with the atlas you already saw.
 
 4. **Get exact source as text** (never trust pixels for code):
 
@@ -50,7 +46,7 @@ source of truth — exact code always comes from `c2m read` as text.
    c2m read F103                  # whole file, numbered
    c2m read S12                   # just that symbol's line range
    c2m read F103 --lines 40:120
-   c2m locate "session|expiry"    # find handles by substring
+   c2m read --find "session"      # search paths+symbols, answers in handles
    ```
 
 5. **Compress any bulky text** (a long doc, tool output, a spec — or a whole
@@ -75,9 +71,9 @@ source of truth — exact code always comes from `c2m read` as text.
   image misreads are silent and look plausible.
 - Handles are stable across runs and queries — safe to mention in commits,
   notes, and follow-up commands.
-- Re-run `c2m paint --index -q "<new task>"` whenever your task changes; it re-elevates the
+- Re-run `c2m paint . --budget 2000 -q "<new task>"` whenever your task changes; it re-elevates the
   same geography in well under a second (warm cache), so map early and often.
 - `--json` on `map`/`zoom` gives `{atlas_path, legend, ...}` when you need to
   script it.
 - For a human-facing map (README, PR description):
-  `c2m render --out map.svg` (parchment theme) or `c2m paint --badge`.
+  `c2m render --out map.svg` (parchment theme).

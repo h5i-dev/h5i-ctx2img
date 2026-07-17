@@ -2,7 +2,7 @@
 //! at matched budgets. Offline it emits reproducible bundles; with
 //! ANTHROPIC_API_KEY and --live it scores a real model.
 
-use crate::ops::{self, Representation};
+use crate::ops;
 use crate::providers::Provider;
 use anyhow::{Context, Result};
 use c2m_index::legend::{build_legend, LegendOptions};
@@ -26,7 +26,6 @@ pub fn bench(
     provider: Provider,
     budget: u32,
 ) -> Result<()> {
-    let _ = Representation::Auto; // (bench always runs both representations)
     let tasks: Vec<Task> = serde_json::from_str(
         &std::fs::read_to_string(tasks_path)
             .with_context(|| format!("read {}", tasks_path.display()))?,

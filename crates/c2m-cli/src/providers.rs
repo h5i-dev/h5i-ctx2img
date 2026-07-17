@@ -19,6 +19,7 @@ pub enum Provider {
 }
 
 impl Provider {
+    #[allow(dead_code)] // used by future provider-labeled reports
     pub fn name(&self) -> &'static str {
         match self {
             Provider::Claude => "claude",

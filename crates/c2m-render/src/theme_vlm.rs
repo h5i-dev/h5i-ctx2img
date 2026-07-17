@@ -24,6 +24,9 @@ pub struct MachinePalette {
     pub bands: [Rgba; 5],
     /// What band tints mix toward under inscribe text (paper color).
     pub tint_base: Rgba,
+    /// Multiplier taking a band color to its border shade (<1 darkens for
+    /// light papers, ≥1 keeps/brightens for dark papers).
+    pub border_shade: f32,
 }
 
 /// Stark: maximum-contrast near-black on white — the production default
@@ -43,6 +46,7 @@ pub const STARK: MachinePalette = MachinePalette {
         Rgba::opaque(0x2B, 0x86, 0x89),
     ],
     tint_base: Rgba::opaque(255, 255, 255),
+    border_shade: 0.68,
 };
 
 /// Warm: parchment-inspired **calibration candidate** — the cute theme at
@@ -64,6 +68,30 @@ pub const WARM: MachinePalette = MachinePalette {
         Rgba::opaque(0x93, 0x5F, 0x33),
     ],
     tint_base: Rgba::opaque(0xFA, 0xF5, 0xE8),
+    border_shade: 0.68,
+};
+
+/// Dark: white-on-black **calibration candidate**. Contrast ratio is
+/// symmetric, but training distributions skew light-background (documents)
+/// — while IDE/code screenshots skew dark. Genuinely undecided by the
+/// literature ("inverted colors" was one of the variants in the 47pp font
+/// swing), so: measure via `c2m calibrate --theme dark`, never assume.
+pub const DARK: MachinePalette = MachinePalette {
+    sea: Rgba::opaque(0x14, 0x14, 0x14),
+    ink: Rgba::opaque(0xEC, 0xEC, 0xEC),
+    halo: Rgba::opaque(0x14, 0x14, 0x14),
+    contour: Rgba::opaque(0x66, 0x66, 0x66),
+    hazard: Rgba::opaque(0xFF, 0x7A, 0x66),
+    island: Rgba::opaque(0x3C, 0x3C, 0x3C),
+    bands: [
+        Rgba::opaque(0x4A, 0x48, 0x40),
+        Rgba::opaque(0x3E, 0x6B, 0x4E),
+        Rgba::opaque(0x2F, 0x8D, 0x77),
+        Rgba::opaque(0x26, 0xB3, 0xA6),
+        Rgba::opaque(0x2E, 0xD9, 0xDE),
+    ],
+    tint_base: Rgba::opaque(0x19, 0x19, 0x19),
+    border_shade: 1.0,
 };
 
 /// Minimum label height in raster px; below this, drop the label (the
@@ -78,7 +106,7 @@ impl MachinePalette {
     /// Border ramp for text cells: the band colors darkened enough that
     /// even band 1 is visible against paper.
     fn band_border(&self, band: u8) -> Rgba {
-        self.band(band).shade(0.68)
+        self.band(band).shade(self.border_shade)
     }
 
     fn terrain(&self, scene: &Scene) -> DisplayList {
@@ -378,6 +406,21 @@ impl Theme for VlmTheme {
     }
     fn overlay(&self, scene: &Scene) -> DisplayList {
         STARK.overlay(scene)
+    }
+}
+
+/// Dark machine theme (calibration candidate).
+pub struct DarkTheme;
+
+impl Theme for DarkTheme {
+    fn background(&self) -> Rgba {
+        DARK.sea
+    }
+    fn terrain(&self, scene: &Scene) -> DisplayList {
+        DARK.terrain(scene)
+    }
+    fn overlay(&self, scene: &Scene) -> DisplayList {
+        DARK.overlay(scene)
     }
 }
 

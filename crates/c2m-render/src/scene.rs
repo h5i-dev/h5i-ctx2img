@@ -509,7 +509,7 @@ pub fn build_l2(
                     }
                 })
                 .collect();
-            let mut subtitle = format!("zoom: {}", region.display_name());
+            let mut subtitle = format!("region: {}", region.display_name());
             if hidden > 0 {
                 subtitle.push_str(&format!(
                     " (+{hidden} smaller files not shown — see legend)"
@@ -635,7 +635,7 @@ pub fn build_l2(
         }
     }
 
-    let mut subtitle = format!("zoom: {}", region.display_name());
+    let mut subtitle = format!("region: {}", region.display_name());
     if hidden > 0 {
         subtitle.push_str(&format!(
             " (+{hidden} smaller files not shown — see legend)"

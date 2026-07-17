@@ -33,7 +33,7 @@ pub fn build_legend(built: &Built, query: &str, opts: &LegendOptions) -> String 
         out.push_str(
             "# handles: R=region F=file X=external-dep · never guess content — zoom in:\n",
         );
-        out.push_str("#   `c2m zoom R3` region detail · `c2m read F103` exact source · `c2m locate <pat>` search\n");
+        out.push_str("#   `c2m paint <dir>` module source as images · `c2m read F103` exact text · `c2m read --find <pat>` search\n");
     }
     if !query.is_empty() {
         out.push_str(&format!("# query: {query}\n"));
@@ -163,7 +163,7 @@ mod tests {
         let legend = build_legend(&b, "session expiry", &LegendOptions::default());
         assert!(legend.contains("▲"), "bands present");
         assert!(legend.contains("session.rs"), "top files listed");
-        assert!(legend.contains("c2m zoom"), "affordances stated");
+        assert!(legend.contains("c2m read"), "affordances stated");
         assert!(
             legend.lines().any(|l| l.starts_with('R')),
             "region handles present"
