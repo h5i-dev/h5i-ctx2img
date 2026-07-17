@@ -113,13 +113,13 @@ fn rect_poly(r: &RectBox) -> Vec<(f32, f32)> {
     ]
 }
 
-/// Canvas region for box layouts: full-bleed minus a hairline gutter and
-/// the title strip.
+/// Canvas region for box layouts: full-bleed minus a hairline gutter
+/// (no title strip — machine renders carry no in-image chrome).
 const BOX_BOUNDS: RectBox = RectBox {
     x: 0.004,
-    y: 0.048,
+    y: 0.004,
     w: 0.992,
-    h: 0.948,
+    h: 0.992,
 };
 
 fn area_weight(loc: u64, n_files: usize) -> f32 {

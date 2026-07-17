@@ -330,68 +330,9 @@ impl MachinePalette {
             }
         }
 
-        // header: title + query (mono, top-left)
-        let hsize = (h * 0.014).max(MIN_LABEL_PX);
-        if !scene.title.is_empty() {
-            dl.push(Op::Text {
-                pos: (0.012, 0.028),
-                text: scene.title.clone(),
-                size_px: hsize * 1.15,
-                color: self.ink,
-                font: FontKind::Mono,
-                align: TextAlign::Left,
-                halo: Some(self.halo),
-            });
-        }
-        if !scene.subtitle.is_empty() {
-            dl.push(Op::Text {
-                pos: (0.012, 0.028 + hsize * 1.6 / h),
-                text: format!("query: {}", scene.subtitle),
-                size_px: hsize,
-                color: Rgba::opaque(70, 70, 70),
-                font: FontKind::Mono,
-                align: TextAlign::Left,
-                halo: Some(self.halo),
-            });
-        }
-
-        // band swatch bar (bottom-right): redundant legend inside the image
-        let sw = 0.028f32;
-        let sh = 0.018f32;
-        for band in 1..=5u8 {
-            let x = 1.0 - 0.02 - sw * (5 - band as i32 + 1) as f32;
-            let y = 1.0 - 0.03;
-            let poly = vec![(x, y), (x + sw, y), (x + sw, y + sh), (x, y + sh)];
-            dl.push(Op::Fill {
-                poly: poly.clone(),
-                color: self.band(band),
-            });
-            dl.push(Op::Stroke {
-                path: poly,
-                color: self.ink,
-                width_px: 1.0,
-                closed: true,
-                dash: None,
-            });
-            dl.push(Op::Text {
-                pos: (x + sw / 2.0, y + sh * 0.78),
-                text: format!("{band}"),
-                size_px: (h * sh * 0.62).max(9.0),
-                color: self.ink,
-                font: FontKind::Sans,
-                align: TextAlign::Center,
-                halo: None,
-            });
-        }
-        dl.push(Op::Text {
-            pos: (1.0 - 0.02 - sw * 5.0, 1.0 - 0.035),
-            text: "relevance ▲".to_string(),
-            size_px: (h * 0.011).max(9.0),
-            color: self.ink,
-            font: FontKind::Sans,
-            align: TextAlign::Left,
-            halo: Some(self.halo),
-        });
+        // No in-image title/query/swatch: that information always rides as
+        // adjacent text (legend/roster), and pixels are for content. Human
+        // themes keep their decorations.
         dl
     }
 }

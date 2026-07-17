@@ -936,12 +936,36 @@ fn report_paint(
     sheet: &str,
     toc: Option<&str>,
 ) {
+    // the accompanying text (banner + toc + factsheet) — printed AND written
+    // beside the first page, since images deliberately carry no chrome
+    let mut companion = String::new();
+    companion.push_str(banner);
+    companion.push('\n');
+    if let Some(toc) = toc {
+        companion.push_str(&format!("# sections: {toc}\n"));
+    }
+    if !sheet.is_empty() {
+        companion.push_str(sheet);
+        companion.push('\n');
+    }
+    companion.push_str(&format!(
+        "# ~{image_tokens} image tok vs ~{text_tokens} text tok (~{:.0}% cut) — READ THE PAGES IN ORDER; quote identifiers from the factsheet, not the image\n",
+        (1.0 - image_tokens as f64 / text_tokens.max(1) as f64) * 100.0
+    ));
+    let legend_path = pages
+        .first()
+        .map(|(p, _, _)| p.with_extension("legend.txt"));
+    if let Some(lp) = &legend_path {
+        let _ = std::fs::write(lp, &companion);
+    }
+
     if json {
         println!(
             "{}",
             serde_json::json!({
                 "banner": banner,
                 "pages": pages.iter().map(|(p, _, _)| p).collect::<Vec<_>>(),
+                "legend_path": legend_path,
                 "image_tokens": image_tokens,
                 "text_tokens_estimate": text_tokens,
                 "savings_pct": (1.0 - image_tokens as f64 / text_tokens.max(1) as f64) * 100.0,
@@ -951,7 +975,6 @@ fn report_paint(
         );
         return;
     }
-    println!("{banner}");
     for (p, w, h) in pages {
         println!(
             "# page: {} ({w}x{h}, ~{} image tok)",
@@ -959,16 +982,7 @@ fn report_paint(
             provider.tokens(*w, *h)
         );
     }
-    if let Some(toc) = toc {
-        println!("# sections: {toc}");
-    }
-    if !sheet.is_empty() {
-        println!("{sheet}");
-    }
-    println!(
-        "# ~{image_tokens} image tok vs ~{text_tokens} text tok (~{:.0}% cut) — READ THE PAGES IN ORDER; quote identifiers from the factsheet, not the image",
-        (1.0 - image_tokens as f64 / text_tokens.max(1) as f64) * 100.0
-    );
+    print!("{companion}");
 }
 
 // ---------------------------------------------------------------- calibrate
