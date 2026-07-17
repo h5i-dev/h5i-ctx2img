@@ -531,8 +531,14 @@ pub fn render(
 
 // ---------------------------------------------------------------- paint
 
-/// Render arbitrary text (file or stdin) into dense image pages + a
-/// verbatim factsheet. The generic "any context → image" entry point.
+/// The universal front door: render ANY text-shaped input into images that
+/// carry the full text, exploiting whatever structure the input has.
+///
+/// Input-shape dispatch:
+/// - **directory** → atlas folio: L1 overview + inscribe tiles per region
+///   (full source in-territory), budget-governed, coverage reported;
+/// - **markdown** (headings) → document map: sections as territories;
+/// - **flat text** → dense reflowed pages.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
     input: Option<&Path>,
@@ -540,10 +546,16 @@ pub fn paint(
     font_px: f32,
     no_reflow: bool,
     out_dir: Option<&Path>,
+    budget: Option<u32>,
+    query: &str,
     force: bool,
     json: bool,
 ) -> Result<()> {
-    use c2m_render::paint as painter;
+    if let Some(p) = input {
+        if p.is_dir() {
+            return paint_repo(p, provider, font_px, out_dir, budget, query, json);
+        }
+    }
     let (text, source_name) = match input {
         Some(p) => (
             std::fs::read_to_string(p).with_context(|| format!("read {}", p.display()))?,
@@ -564,24 +576,64 @@ pub fn paint(
         bail!("nothing to paint (empty input)");
     }
 
+    // structured text → document map (unless the caller forces flat pages)
+    if !no_reflow {
+        if let Some(sections) = c2m_core::sections::split_markdown(&text) {
+            return paint_doc(
+                &text,
+                &sections,
+                &source_name,
+                provider,
+                font_px,
+                out_dir,
+                budget,
+                query,
+                force,
+                json,
+            );
+        }
+    }
+    paint_flat(
+        &text,
+        &source_name,
+        provider,
+        font_px,
+        no_reflow,
+        out_dir,
+        force,
+        json,
+    )
+}
+
+/// Flat text → dense reflowed pages (the original paint path).
+#[allow(clippy::too_many_arguments)]
+fn paint_flat(
+    text: &str,
+    source_name: &str,
+    provider: Provider,
+    font_px: f32,
+    no_reflow: bool,
+    out_dir: Option<&Path>,
+    force: bool,
+    json: bool,
+) -> Result<()> {
+    use c2m_render::paint as painter;
     let profile = match provider {
         Provider::Openai | Provider::OpenaiMini => painter::PaintProfile::openai(font_px),
         _ => painter::PaintProfile::claude(font_px),
     };
     let content = if no_reflow {
-        text.clone()
+        text.to_string()
     } else {
-        painter::reflow(&text)
+        painter::reflow(text)
     };
     let pages = painter::paint(&content, &profile, !no_reflow)?;
 
-    // token accounting: honest counterfactual, estimate on both sides
-    let text_tokens = estimate_tokens(&text);
+    let text_tokens = estimate_tokens(text);
     let image_tokens: u32 = pages
         .iter()
         .map(|p| provider.tokens(p.width, p.height))
         .sum();
-    // +10% safety margin on the image side, mirroring field practice
     let image_side = (image_tokens as f32 * 1.10) as u32;
     if image_side >= text_tokens && !force {
         eprintln!(
@@ -600,43 +652,289 @@ pub fn paint(
         std::fs::write(&path, &page.png)?;
         paths.push(path);
     }
+    let sheet = c2m_core::factsheet::render_sheet(&c2m_core::factsheet::extract(text, 40));
+    report_paint(
+        json,
+        &painter::banner(pages.len(), !no_reflow),
+        &paths
+            .iter()
+            .zip(&pages)
+            .map(|(p, page)| (p.clone(), page.width, page.height))
+            .collect::<Vec<_>>(),
+        provider,
+        image_tokens,
+        text_tokens,
+        &sheet,
+        None,
+    );
+    Ok(())
+}
 
-    let facts = c2m_core::factsheet::extract(&text, 40);
-    let sheet = c2m_core::factsheet::render_sheet(&facts);
+/// Markdown → one document map: sections as territories carrying full text.
+#[allow(clippy::too_many_arguments)]
+fn paint_doc(
+    full_text: &str,
+    sections: &[c2m_core::sections::Section],
+    source_name: &str,
+    provider: Provider,
+    font_px: f32,
+    out_dir: Option<&Path>,
+    budget: Option<u32>,
+    query: &str,
+    force: bool,
+    json: bool,
+) -> Result<()> {
+    // profitability: the map must cost less than the text it carries; size
+    // it down to ~70% of the text cost, and refuse below a useful floor
+    let text_tokens = estimate_tokens(full_text);
+    let affordable = (text_tokens as f32 * 0.70) as u32;
+    let requested = budget.unwrap_or(3600);
+    let effective = requested.min(affordable);
+    if effective < 500 && !force {
+        eprintln!(
+            "· not painted: text is cheaper for this document (~{text_tokens} text tok; a useful section map needs ≥500 image tok). Pass --force to paint anyway."
+        );
+        return Ok(());
+    }
+    let effective = if force { requested } else { effective.max(500) };
+    let bands = c2m_core::sections::band_sections(sections, query);
+    let doc_sections: Vec<scene::DocSection> = sections
+        .iter()
+        .zip(&bands)
+        .map(|(s, &band)| scene::DocSection {
+            title: s.title.clone(),
+            text: s.text.clone(),
+            band,
+        })
+        .collect();
+    let (w, h) = provider.solve(effective, 1.0);
+    let cfg = SceneConfig {
+        width: w,
+        height: h,
+        title: source_name.to_string(),
+        seed: seed_for(source_name),
+        text_px: font_px.max(8.0),
+        ..Default::default()
+    };
+    let s = scene::build_doc(&doc_sections, &cfg);
+    let png = render_png(&s, &VlmTheme)?;
+    let dir = out_dir
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+    std::fs::create_dir_all(&dir)?;
+    let path = dir.join(format!("{source_name}-map.png"));
+    std::fs::write(&path, &png)?;
 
+    let image_tokens = provider.tokens(w, h);
+    let sheet = c2m_core::factsheet::render_sheet(&c2m_core::factsheet::extract(full_text, 40));
+    let toc: Vec<String> = doc_sections
+        .iter()
+        .enumerate()
+        .map(|(i, sec)| format!("§{} {} ▲{}", i + 1, sec.title, sec.band))
+        .collect();
+    report_paint(
+        json,
+        &format!(
+            "c2m paint (this user's local tool) rendered this document as a section map — {} territories, each carrying its full text. Read every territory.",
+            doc_sections.len()
+        ),
+        &[(path, w, h)],
+        provider,
+        image_tokens,
+        text_tokens,
+        &sheet,
+        Some(&toc.join(" · ")),
+    );
+    Ok(())
+}
+
+/// Directory → atlas folio: an L1 overview page plus inscribe tiles that
+/// carry the FULL SOURCE of each region, highest-relevance regions first,
+/// until the token budget is spent. Coverage is reported, never implied.
+#[allow(clippy::too_many_arguments)]
+fn paint_repo(
+    root: &Path,
+    provider: Provider,
+    font_px: f32,
+    out_dir: Option<&Path>,
+    budget: Option<u32>,
+    query: &str,
+    json: bool,
+) -> Result<()> {
+    let budget = budget.unwrap_or(12_000);
+    let ws = Workspace::open(root)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let built = ws.build(query, now, true)?;
+    print_stats(&built);
+    let name = repo_name(&ws);
+    let dir = out_dir
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| ws.dir.clone());
+    std::fs::create_dir_all(&dir)?;
+
+    // page 1: the L1 overview (index) — cheap situational awareness
+    let mut pages: Vec<(PathBuf, u32, u32)> = Vec::new();
+    let mut spent: u32 = 0;
+    let (ow, oh) = provider.solve(1800.min(budget / 3).max(900), 1.0);
+    let mut saved = SavedSites::load(&ws.layout_path());
+    let cfg = SceneConfig {
+        width: ow,
+        height: oh,
+        title: name.clone(),
+        seed: seed_for(&name),
+        ..Default::default()
+    };
+    let overview = scene::build_l1(&built, &mut saved, &cfg);
+    saved.save(&ws.layout_path())?;
+    let overview_path = dir.join(format!("{name}-atlas.png"));
+    std::fs::write(&overview_path, render_png(&overview, &VlmTheme)?)?;
+    spent += provider.tokens(ow, oh);
+    pages.push((overview_path, ow, oh));
+
+    // inscribe tiles, summit-first, until the budget runs out
+    let sums = built.region_summaries();
+    let mut order: Vec<usize> = (0..built.analysis.tree.regions.len()).collect();
+    order.sort_by(|&x, &y| {
+        sums[y]
+            .band
+            .cmp(&sums[x].band)
+            .then(
+                built.analysis.tree.regions[y]
+                    .loc
+                    .cmp(&built.analysis.tree.regions[x].loc),
+            )
+            .then(x.cmp(&y))
+    });
+    let mut registry = HandleRegistry::load(&ws.registry_path());
+    let per_tile = 2600u32;
+    let mut painted_loc: u64 = 0;
+    let mut painted_text = String::new();
+    let mut skipped: Vec<String> = Vec::new();
+    for ri in order {
+        let region = &built.analysis.tree.regions[ri];
+        let handle = built.region_handles[ri].clone();
+        if spent + per_tile > budget {
+            skipped.push(format!("{handle} {}", region.display_name()));
+            continue;
+        }
+        let (tw, th) = provider.solve(per_tile, 1.0);
+        let mut tile_sites = SavedSites::load(&ws.dir.join(format!("layout-{handle}.json")));
+        let tcfg = SceneConfig {
+            width: tw,
+            height: th,
+            title: format!("{name} · {}", region.display_name()),
+            seed: seed_for(region.display_name()),
+            text_px: font_px.max(8.0),
+            ..Default::default()
+        };
+        let root_buf = ws.root.clone();
+        let loader = move |p: &str| std::fs::read_to_string(root_buf.join(p)).ok();
+        let tile = scene::build_l2(
+            &built,
+            ri,
+            &mut registry,
+            &mut tile_sites,
+            &tcfg,
+            Some(&loader),
+        );
+        tile_sites.save(&ws.dir.join(format!("layout-{handle}.json")))?;
+        let path = dir.join(format!("{name}-{handle}.png"));
+        std::fs::write(&path, render_png(&tile, &VlmTheme)?)?;
+        spent += provider.tokens(tw, th);
+        pages.push((path, tw, th));
+        painted_loc += region.loc;
+        for &fid in &region.files {
+            if let Ok(src) =
+                std::fs::read_to_string(ws.root.join(&built.analysis.files[fid.idx()].path))
+            {
+                painted_text.push_str(&src);
+                painted_text.push('\n');
+            }
+        }
+    }
+    registry.save(&ws.registry_path())?;
+
+    let total_loc: u64 = built.analysis.files.iter().map(|f| f.loc as u64).sum();
+    let coverage = (painted_loc as f64 / total_loc.max(1) as f64) * 100.0;
+    let text_tokens = estimate_tokens(&painted_text);
+    let sheet = c2m_core::factsheet::render_sheet(&c2m_core::factsheet::extract(
+        &painted_text[..painted_text.len().min(512 * 1024)],
+        40,
+    ));
+    let legend = build_legend(&built, query, &LegendOptions::default());
+    let mut note = format!(
+        "atlas folio: page 1 is the overview map; the following tiles carry the FULL SOURCE of each region, most relevant first. Coverage: {coverage:.0}% of {}. ",
+        human_loc(total_loc)
+    );
+    if !skipped.is_empty() {
+        note.push_str(&format!(
+            "Not painted (budget): {} — zoom or read them on demand.",
+            skipped.join(", ")
+        ));
+    }
+    if !json {
+        println!("{legend}");
+    }
+    report_paint(
+        json,
+        &note,
+        &pages,
+        provider,
+        spent,
+        text_tokens,
+        &sheet,
+        None,
+    );
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn report_paint(
+    json: bool,
+    banner: &str,
+    pages: &[(PathBuf, u32, u32)],
+    provider: Provider,
+    image_tokens: u32,
+    text_tokens: u32,
+    sheet: &str,
+    toc: Option<&str>,
+) {
     if json {
         println!(
             "{}",
             serde_json::json!({
-                "pages": paths,
+                "banner": banner,
+                "pages": pages.iter().map(|(p, _, _)| p).collect::<Vec<_>>(),
                 "image_tokens": image_tokens,
                 "text_tokens_estimate": text_tokens,
                 "savings_pct": (1.0 - image_tokens as f64 / text_tokens.max(1) as f64) * 100.0,
                 "factsheet": sheet,
-                "banner": painter::banner(pages.len(), !no_reflow),
+                "toc": toc,
             })
         );
-    } else {
-        println!("{}", painter::banner(pages.len(), !no_reflow));
-        for (p, page) in paths.iter().zip(&pages) {
-            println!(
-                "# page: {} ({}x{}, {} chars, ~{} image tok)",
-                p.display(),
-                page.width,
-                page.height,
-                page.chars,
-                provider.tokens(page.width, page.height)
-            );
-        }
-        if !sheet.is_empty() {
-            println!("{sheet}");
-        }
+        return;
+    }
+    println!("{banner}");
+    for (p, w, h) in pages {
         println!(
-            "# ~{image_tokens} image tok vs ~{text_tokens} text tok (~{:.0}% cut) — READ THE PAGES IN ORDER; quote identifiers from the factsheet line, not the image",
-            (1.0 - image_tokens as f64 / text_tokens.max(1) as f64) * 100.0
+            "# page: {} ({w}x{h}, ~{} image tok)",
+            p.display(),
+            provider.tokens(*w, *h)
         );
     }
-    Ok(())
+    if let Some(toc) = toc {
+        println!("# sections: {toc}");
+    }
+    if !sheet.is_empty() {
+        println!("{sheet}");
+    }
+    println!(
+        "# ~{image_tokens} image tok vs ~{text_tokens} text tok (~{:.0}% cut) — READ THE PAGES IN ORDER; quote identifiers from the factsheet, not the image",
+        (1.0 - image_tokens as f64 / text_tokens.max(1) as f64) * 100.0
+    );
 }
 
 // ---------------------------------------------------------------- calibrate

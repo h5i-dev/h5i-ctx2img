@@ -53,11 +53,13 @@ source of truth — exact code always comes from `c2m read` as text.
    c2m locate "session|expiry"    # find handles by substring
    ```
 
-5. **Compress any other bulky text** (a long doc, tool output, a spec) before
-   ingesting it:
+5. **Compress any bulky text** (a long doc, tool output, a spec — or a whole
+   directory) before ingesting it:
 
    ```bash
-   c2m paint big-context.md --out-dir /tmp/pages   # or: cat text | c2m paint
+   c2m paint doc.md --out-dir /tmp/pages     # markdown → section map (headings = territories)
+   c2m paint some/dir --query "<task>"       # dir → atlas folio: overview + full-source tiles
+   cat text | c2m paint --out-dir /tmp/pages # flat text → dense pages
    ```
 
    Then Read the page PNGs in order. Keep the printed **factsheet line** —

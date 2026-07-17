@@ -103,6 +103,13 @@ character accuracy; the shipped presets stay inside the ≥99% band. Independent
 that, the contract stays: pixels are for *reading*, `c2m read` is for *quoting* —
 the escape hatch is what lets the default density be aggressive.
 
+**`c2m paint` is the front door** (promoted from peer surface, 2026-07-16): it
+dispatches on input shape and always carries the full text — directory → atlas
+folio (L1 overview + inscribe tiles per region, budget-governed, coverage
+reported); markdown → section map (headings become territories, query-banded);
+flat text → dense pages. `c2m map` remains the index-only specialist for
+navigation without reading. Original framing kept below for context:
+
 **Beyond repos — `c2m paint` is a peer product surface, not an afterthought.**
 The tool's real subject is *any text an agent must ingest*: system prompts, tool
 docs, human-typed prompts, markdown/docs, logs, papers, transcripts. Two input

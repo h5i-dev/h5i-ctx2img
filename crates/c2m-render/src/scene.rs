@@ -243,6 +243,75 @@ pub fn build_l1(built: &Built, saved: &mut SavedSites, cfg: &SceneConfig) -> Sce
     }
 }
 
+/// A titled chunk of a structured document (markdown section, chapter, …).
+pub struct DocSection {
+    pub title: String,
+    pub text: String,
+    pub band: u8,
+}
+
+/// Document map: sections become territories carrying their full text —
+/// the `paint` path for structured text (no repo analysis involved).
+pub fn build_doc(sections: &[DocSection], cfg: &SceneConfig) -> Scene {
+    let territories: Vec<Territory> = sections
+        .iter()
+        .enumerate()
+        .map(|(i, s)| Territory {
+            key: format!("§{}:{}", i + 1, s.title),
+            area: (s.text.len() as f32).max(80.0).powf(0.8),
+            band: s.band,
+        })
+        .collect();
+    let lopts = LayoutOptions {
+        aspect: cfg.width as f32 / cfg.height as f32,
+        seed: cfg.seed,
+        n_islands: 0,
+        ..Default::default()
+    };
+    let mut saved = SavedSites::default();
+    let l = layout(&territories, &lopts, &mut saved);
+
+    let cells: Vec<CellVis> = sections
+        .iter()
+        .enumerate()
+        .map(|(i, s)| {
+            let shape = &l.cells[i];
+            CellVis {
+                handle: format!("§{}", i + 1),
+                name: s.title.clone(),
+                band: s.band,
+                hazards: 0,
+                lang: Lang::Markdown,
+                loc: s.text.lines().count() as u64,
+                poly: shape.poly.clone(),
+                anchor: shape.anchor,
+                centroid: shape.centroid,
+                anchor_radius: shape.anchor_radius,
+                cities: Vec::new(),
+                text: Some(s.text.lines().take(1200).map(str::to_string).collect()),
+            }
+        })
+        .collect();
+
+    let total_loc: u64 = cells.iter().map(|c| c.loc).sum();
+    Scene {
+        width: cfg.width,
+        height: cfg.height,
+        title: cfg.title.clone(),
+        subtitle: String::new(),
+        cells,
+        coast: l.coast,
+        contours: l.contours,
+        edges: Vec::new(),
+        islands: Vec::new(),
+        elevation: l.elevation,
+        field_w: l.field_w,
+        field_h: l.field_h,
+        total_loc,
+        text_px: cfg.text_px,
+    }
+}
+
 /// L2: one region's interior — cells are files, cities are symbols.
 /// `content` (inscribe mode): loads a file's text by repo-relative path; when
 /// given, cells carry their source for in-territory typesetting and symbol

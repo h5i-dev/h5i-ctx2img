@@ -75,7 +75,11 @@ impl Theme for VlmTheme {
             }
         }
         // contours (between-band isolines) — noise under body text, skip in inscribe
-        for (_, lines) in if inscribe { &[][..] } else { &scene.contours[..] } {
+        for (_, lines) in if inscribe {
+            &[][..]
+        } else {
+            &scene.contours[..]
+        } {
             for line in lines {
                 dl.push(Op::Stroke {
                     path: line.clone(),
@@ -179,6 +183,11 @@ impl Theme for VlmTheme {
                     align: TextAlign::Center,
                     halo: Some(HALO),
                 });
+                let spill_note = if c.handle.starts_with('F') {
+                    format!("c2m read {}", c.handle)
+                } else {
+                    "truncated — see source".to_string()
+                };
                 let (ops, _) = flow_text_ops(
                     &c.poly,
                     w,
@@ -188,7 +197,7 @@ impl Theme for VlmTheme {
                     hy + hsize * 0.5,
                     INK,
                     Rgba::opaque(128, 128, 128),
-                    &format!("c2m read {}", c.handle),
+                    &spill_note,
                 );
                 for op in ops {
                     dl.push(op);

@@ -14,6 +14,7 @@ pub mod ingest;
 pub mod parse;
 pub mod regions;
 pub mod relevance;
+pub mod sections;
 pub mod tokens;
 pub mod types;
 

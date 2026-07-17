@@ -12,8 +12,8 @@ use std::path::PathBuf;
 #[command(
     name = "c2m",
     version,
-    about = "context2map: compile your repository into a semantic atlas — a map image + text legend + zoomable handles — that a vision LLM can survey in ~2k tokens.",
-    after_help = "workflow: c2m map \"<task>\" → read the atlas image → c2m zoom R# → c2m read F#"
+    about = "context2map: render agent context as images that cost a fraction of the tokens.\n\nMain command — c2m paint <input>: any text-shaped input becomes images that CARRY THE FULL TEXT,\nshaped by its structure (directory → atlas folio of full-source region tiles; markdown → section\nmap; flat text → dense pages), always with a verbatim factsheet.\n\nSpecialist — c2m map \"<task>\": index-only atlas (~2k tok) for navigating a repo without reading it.",
+    after_help = "repo navigation loop: c2m map \"<task>\" → read the atlas → c2m zoom R# [--inscribe] → c2m read F#\nrender/badge are human-facing; build/calibrate/bench are plumbing."
 )]
 struct Cli {
     /// Repository root (default: current directory).
@@ -25,8 +25,39 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// (Re)index the repository into .c2m/ (map does this implicitly).
-    Build,
+    /// THE FRONT DOOR: render any text-shaped input into images carrying the
+    /// full text — a directory becomes an atlas folio (overview + full-source
+    /// region tiles), markdown becomes a section map, flat text becomes dense
+    /// pages. Always with a verbatim factsheet.
+    Paint {
+        /// Input file or directory (omit to read stdin).
+        input: Option<PathBuf>,
+        #[arg(long, value_enum, default_value = "claude")]
+        provider: Provider,
+        /// Mono size in px (smaller = denser; 8px is the validated default
+        /// for frontier readers).
+        #[arg(long, default_value_t = 8.0)]
+        font_px: f32,
+        /// Keep one source line per row instead of ↵-reflow packing (also
+        /// disables markdown section-map detection).
+        #[arg(long)]
+        no_reflow: bool,
+        /// Total image-token budget (directory: default 12000; document map:
+        /// 3600). Flat pages ignore it.
+        #[arg(long)]
+        budget: Option<u32>,
+        /// Optional task/query: conditions region and section relevance.
+        #[arg(long, default_value = "")]
+        query: String,
+        /// Output directory for page PNGs (default: current directory).
+        #[arg(long)]
+        out_dir: Option<PathBuf>,
+        /// Paint even when text tokens would be cheaper.
+        #[arg(long)]
+        force: bool,
+        #[arg(long)]
+        json: bool,
+    },
     /// Render the query-conditioned atlas: image + legend + handles.
     Map {
         /// The task/query that conditions elevation (what you're working on).
@@ -84,29 +115,6 @@ enum Cmd {
     },
     /// Find handles by path/symbol substring.
     Locate { pattern: String },
-    /// Render ANY text (file or stdin) into dense image pages + a verbatim
-    /// factsheet — prompts, docs, tool output, markdown, logs.
-    Paint {
-        /// Input file (omit to read stdin).
-        input: Option<PathBuf>,
-        #[arg(long, value_enum, default_value = "claude")]
-        provider: Provider,
-        /// Mono size in px (smaller = denser; 8px is the validated default
-        /// for frontier readers).
-        #[arg(long, default_value_t = 8.0)]
-        font_px: f32,
-        /// Keep one source line per row instead of ↵-reflow packing.
-        #[arg(long)]
-        no_reflow: bool,
-        /// Output directory for page PNGs (default: current directory).
-        #[arg(long)]
-        out_dir: Option<PathBuf>,
-        /// Paint even when text tokens would be cheaper.
-        #[arg(long)]
-        force: bool,
-        #[arg(long)]
-        json: bool,
-    },
     /// Human-facing map (parchment theme by default).
     Render {
         /// Optional query to condition elevation (default: importance).
@@ -130,6 +138,8 @@ enum Cmd {
         #[arg(long)]
         out: Option<PathBuf>,
     },
+    /// (Re)index the repository into .c2m/ (map does this implicitly).
+    Build,
     /// Legibility probes on a synthetic repo (offline bundle or --live).
     Calibrate {
         /// Where to generate the synthetic repo (default: temp dir).
@@ -207,6 +217,8 @@ fn main() -> anyhow::Result<()> {
             provider,
             font_px,
             no_reflow,
+            budget,
+            query,
             out_dir,
             force,
             json,
@@ -216,6 +228,8 @@ fn main() -> anyhow::Result<()> {
             font_px,
             no_reflow,
             out_dir.as_deref(),
+            budget,
+            &query,
             force,
             json,
         ),

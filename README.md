@@ -45,14 +45,16 @@ built around that split:
 ```bash
 cargo install --path crates/c2m-cli   # or: cargo build --release
 
+# THE FRONT DOOR — paint any text-shaped input as full-text images:
+c2m paint src/ --query "fix expiry"   # repo dir → atlas folio: overview + full-source tiles
+c2m paint DESIGN.md                   # markdown → one section map (headings = territories)
+cat prompt.txt | c2m paint            # flat text → dense reflowed pages
+
+# The index specialist — navigate without reading (~2k tokens for a whole repo):
 c2m map "fix the session expiry bug"  # atlas.png + legend + handles
-c2m zoom R3                           # region tile: files + symbols
-c2m zoom R3 --inscribe                # territory tile with the SOURCE TEXT inside
+c2m zoom R3 --inscribe                # one region's full source, in-territory
 c2m read F103 --lines 40:120          # exact source, always text
 c2m locate "session"                  # find handles
-
-c2m paint big-context.md              # ANY text → dense image pages + factsheet
-cat prompt.txt | c2m paint            # works on stdin too
 
 c2m render --out map.svg              # the pretty human map (parchment theme)
 c2m badge                             # README-sized hero image
