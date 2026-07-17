@@ -21,11 +21,13 @@ Design a Rust tool (context2map) that converts repo/context into query-condition
 - [x] Full context2map implementation shipped
 - [x] edited crates/c2m-core/src/regions.rs; edited crates/c2m-core/src/regions.rs; edited crates/c2m-core/src/regions.rs
 - [x] edited crates/c2m-core/src/regions.rs; edited crates/c2m-core/src/regions.rs; edited crates/c2m-render/src/scene.rs
+- [x] edited crates/c2m-core/src/regions.rs; edited crates/c2m-core/src/regions.rs; edited crates/c2m-render/src/scene.rs
 
 ## Active Branches
 - main (primary)
 
 ## Notes
+- [2026-07-17 01:21 UTC] `wip`: edited crates/c2m-core/src/regions.rs; edited crates/c2m-core/src/regions.rs; edited crates/c2m-render/src/scene.rs
 - [2026-07-17 01:19 UTC] `wip`: edited crates/c2m-core/src/regions.rs; edited crates/c2m-core/src/regions.rs; edited crates/c2m-render/src/scene.rs
 - [2026-07-17 01:15 UTC] `wip`: edited crates/c2m-core/src/regions.rs; edited crates/c2m-core/src/regions.rs; edited crates/c2m-core/src/regions.rs
 - [2026-07-17 01:15 UTC] `wip`: Full context2map implementation shipped
