@@ -1,0 +1,18 @@
+[package]
+name = "ctx2img-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ctx2img-core.workspace = true
+ctx2img-layout.workspace = true
+ctx2img-index.workspace = true
+anyhow.workspace = true
+tiny-skia.workspace = true
+fontdue.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+ctx2img-index.workspace = true

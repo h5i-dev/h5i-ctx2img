@@ -1,7 +1,7 @@
-# context2map — Design Document
+# ctx2img — Design Document
 
 **Status:** v0.2 (text-bearing atlases) · 2026-07-16
-**Repo:** `h5i-context2map` · **Working binary name:** `c2m`
+**Repo:** `h5i-ctx2img` · **Working binary name:** `ctx2img`
 
 A Rust tool that compiles a repository (plus task context: prompts, docs, any text)
 into a **query-conditioned semantic map image** — a "Repository Atlas" — where the
@@ -26,7 +26,7 @@ guarantee rather than the only text channel.)
 
 1. **Pixels carry text at a chosen density.** Rendered text in images is
    token-cheaper than the same text as tokens (§2), and modern VLMs decode it
-   reliably up to a model-dependent compression ratio. `c2m` typesets the actual
+   reliably up to a model-dependent compression ratio. `ctx2img` typesets the actual
    source into each territory, at a density solved from the token budget and the
    target model's calibrated reading ability.
 2. **Pixels also carry structure.** Topology, hierarchy, relevance, importance,
@@ -35,7 +35,7 @@ guarantee rather than the only text channel.)
 3. **Every element is addressable, and exactness is never *claimed* by pixels.**
    Handles (`R3`, `F103`, `S1042`) resolve to exact byte ranges via the sidecar.
    Anything the model must quote, edit, hash-compare, or execute is re-fetched as
-   text (`c2m read`) — the image is evidence, the text channel is authority. This is
+   text (`ctx2img read`) — the image is evidence, the text channel is authority. This is
    the LensVLM loop, and it is what makes aggressive in-image compression safe.
 4. **Instructions and policies still never go in pixels.** The security posture of
    v0.1 is unchanged: system-level instructions, security policy, and precedence
@@ -71,7 +71,7 @@ Worked example, 2,000-file repo, task "fix the session-expiry bug":
 | + avg 1.3 zooms (region tile ~800 or text read ~500) | **~3.5–4.5k total** |
 
 Honest caveat: below roughly ~300 files a text map is usually cheaper and safer.
-`c2m` computes both costs and **auto-selects the cheaper representation** that fits the
+`ctx2img` computes both costs and **auto-selects the cheaper representation** that fits the
 budget (`--representation auto`). We win on medium-to-huge repos and on
 whole-repo-awareness tasks, and we say so in the README instead of overclaiming.
 
@@ -102,36 +102,36 @@ the organic Voronoi geography remains the index/human layout and is one
 elevation band moved from the fill to the **border (color + weight,
 1.6px valley → 4.6px summit)** plus the header's printed ▲n: a background
 tint taxes every glyph's contrast to encode one per-box attribute, a
-border encodes it for a few hundred pixels at zero contrast cost. A/B at equal budget (crates/c2m-core, 2,600 tok,
+border encodes it for a few hundred pixels at zero contrast cost. A/B at equal budget (crates/ctx2img-core, 2,600 tok,
 2026-07-16, in-session VLM read): boxes carried ~2–3× more source (several
 files complete vs +143/+242/+518-line spills), equal per-glyph legibility;
 organic additionally suffers edge-curves crossing body text. The index
 atlas stays Voronoi deliberately: its payload is *stable spatial memory*,
 and treemap layouts reshuffle when file-size order changes. Content that doesn't fit at the chosen density spills in
-relevance order to a `⋯ c2m read F#` marker — coverage degrades explicitly, never
+relevance order to a `⋯ ctx2img read F#` marker — coverage degrades explicitly, never
 silently.
 
 **Exactness discipline.** Transcription probes (§10) measure each model's per-density
 character accuracy; the shipped presets stay inside the ≥99% band. Independent of
-that, the contract stays: pixels are for *reading*, `c2m read` is for *quoting* —
+that, the contract stays: pixels are for *reading*, `ctx2img read` is for *quoting* —
 the escape hatch is what lets the default density be aggressive.
 
-**`c2m paint` is the front door** (promoted from peer surface, 2026-07-16): it
+**`ctx2img paint` is the front door** (promoted from peer surface, 2026-07-16): it
 dispatches on input shape and always carries the full text — directory → atlas
 folio (L1 overview + inscribe tiles per region, budget-governed, coverage
 reported); markdown → section map (headings become territories, query-banded);
-flat text → dense pages. The index-only atlas survives as `c2m paint --index`
+flat text → dense pages. The index-only atlas survives as `ctx2img paint --index`
 (the `map` subcommand was folded into it, 2026-07-16); prose below that says
-`c2m map` describes that mode. Original framing kept below for context:
+`ctx2img map` describes that mode. Original framing kept below for context:
 
-**Beyond repos — `c2m paint` is a peer product surface, not an afterthought.**
+**Beyond repos — `ctx2img paint` is a peer product surface, not an afterthought.**
 The tool's real subject is *any text an agent must ingest*: system prompts, tool
 docs, human-typed prompts, markdown/docs, logs, papers, transcripts. Two input
 shapes share one engine:
 
 - **Structured corpora** (repos, doc trees) → the full atlas: geography +
   relevance + handles + zoom.
-- **Text streams** (a prompt, a file, stdin) → `c2m paint`: the same
+- **Text streams** (a prompt, a file, stdin) → `ctx2img paint`: the same
   budget-solved density typesetting on folio pages, with the same spill
   discipline and token accounting, plus lightweight structure (heading-derived
   sections as territories when the text has structure worth mapping).
@@ -148,7 +148,7 @@ actually spent, so the cut is measured per call, never asserted.
 
 - G0. *(v0.2)* **Text-bearing maps**: territories typeset their actual content at a
   budget-solved density; the map is simultaneously the index *and* (within the
-  calibrated density regime) the content. `c2m paint` extends this to arbitrary text.
+  calibrated density regime) the content. `ctx2img paint` extends this to arbitrary text.
 - G1. Whole-repo situational awareness for a VLM in ≤ ~2.5k tokens (map + legend), with
   lossless zoom-to-source via handles.
 - G2. Query-conditioned relevance baked into the image (elevation), so the model's first
@@ -164,7 +164,7 @@ actually spent, so the cut is measured per call, never asserted.
 **Non-goals**
 
 - N1. *(revised in v0.2 — was "never render text into images")* Training or requiring
-  a **custom decoder**: `c2m` renders text only at densities the *target stock model*
+  a **custom decoder**: `ctx2img` renders text only at densities the *target stock model*
   is calibrated to read; it does not chase DeepSeek-OCR-class 10–20× ratios that need
   a trained decode path.
 - N2. Being a general graph-viz library, IDE plugin, or server (v1 is a stateless CLI
@@ -178,12 +178,12 @@ actually spent, so the cut is measured per call, never asserted.
 
 ```mermaid
 flowchart LR
-    subgraph index["c2m build (incremental, cached)"]
+    subgraph index["ctx2img build (incremental, cached)"]
         A[Ingest<br/>ignore + gix] --> B[Parse<br/>tree-sitter symbols/imports]
         B --> C[Graph<br/>petgraph: imports, call-approx,<br/>co-change, path proximity + PageRank]
         C --> D[Semantics<br/>model2vec/fastembed embeddings<br/>TF-IDF fallback]
     end
-    subgraph render["c2m map QUERY (per task, <2s warm)"]
+    subgraph render["ctx2img map QUERY (per task, <2s warm)"]
         Q[Query] --> E[Relevance field<br/>lexical + embedding +<br/>personalized PageRank = elevation]
         D --> E
         E --> F[Layout<br/>stable geography:<br/>Voronoi treemap + contours]
@@ -201,12 +201,12 @@ flowchart LR
 
 | Crate | Responsibility | Key deps |
 |---|---|---|
-| `c2m-core` | ingest, parsing, graph, metrics, relevance scoring | `ignore`, `gix`, `tree-sitter` 0.26 (+ language packs), `petgraph` 0.8 (`page_rank`), `model2vec-rs` (default) / `fastembed` (feature), `rayon` |
-| `c2m-layout` | stable geography: weighted Voronoi treemap (Nocaj–Brandes power diagrams — **we implement this; no maintained crate exists**, over `delaunator`/`voronoice`), marching-squares contours, force-refinement, edge bundling | `delaunator`, `kiddo` |
-| `c2m-render` | scene graph → SVG and raster; themes; label layout & collision | `tiny-skia` 0.12, `cosmic-text` 0.19 (shaping/measurement), `resvg`/`usvg` 0.47 (SVG export path), `image` |
-| `c2m-index` | handle registry, sidecar store, content-hash cache, legend emission | `serde`, `blake3` |
-| `c2m-cli` | UX, provider profiles, budget solver, `auto` representation picker, `--json` output for agent hosts | `clap` |
-| `c2m-eval` | calibration + benchmark harness (talks to provider APIs) | `reqwest`, provider SDKs |
+| `ctx2img-core` | ingest, parsing, graph, metrics, relevance scoring | `ignore`, `gix`, `tree-sitter` 0.26 (+ language packs), `petgraph` 0.8 (`page_rank`), `model2vec-rs` (default) / `fastembed` (feature), `rayon` |
+| `ctx2img-layout` | stable geography: weighted Voronoi treemap (Nocaj–Brandes power diagrams — **we implement this; no maintained crate exists**, over `delaunator`/`voronoice`), marching-squares contours, force-refinement, edge bundling | `delaunator`, `kiddo` |
+| `ctx2img-render` | scene graph → SVG and raster; themes; label layout & collision | `tiny-skia` 0.12, `cosmic-text` 0.19 (shaping/measurement), `resvg`/`usvg` 0.47 (SVG export path), `image` |
+| `ctx2img-index` | handle registry, sidecar store, content-hash cache, legend emission | `serde`, `blake3` |
+| `ctx2img-cli` | UX, provider profiles, budget solver, `auto` representation picker, `--json` output for agent hosts | `clap` |
+| `ctx2img-eval` | calibration + benchmark harness (talks to provider APIs) | `reqwest`, provider SDKs |
 
 (No server crate: agent integration is a bundled skill over the stateless CLI, §9. An
 `rmcp`-based MCP wrapper is deliberately deferred to the post-v1 backlog.)
@@ -217,16 +217,16 @@ All pure Rust; no C deps required in the default build (`gix` over `git2`,
 ### CLI sketch
 
 ```bash
-c2m build [--rev HEAD]                    # (re)index → .c2m/ cache
-c2m map "fix session expiry bug" \
+ctx2img build [--rev HEAD]                    # (re)index → .ctx2img/ cache
+ctx2img map "fix session expiry bug" \
     --provider claude --budget 2000 \
     --out atlas.png                       # emits atlas.png + legend.txt + updates handle registry
-c2m zoom R3  --budget 1200                # region tile (image+text) or text-only detail
-c2m read F103 [--lines 40:120]           # exact source (Layer 3)
-c2m locate "session|expiry"               # grep → handles
-c2m render --theme parchment --format svg # human mode, infinite-zoom SVG
-c2m calibrate --provider claude           # legibility probe → tuned style preset
-c2m bench --suite localization            # accuracy-vs-budget benchmark
+ctx2img zoom R3  --budget 1200                # region tile (image+text) or text-only detail
+ctx2img read F103 [--lines 40:120]           # exact source (Layer 3)
+ctx2img locate "session|expiry"               # grep → handles
+ctx2img render --theme parchment --format svg # human mode, infinite-zoom SVG
+ctx2img calibrate --provider claude           # legibility probe → tuned style preset
+ctx2img bench --suite localization            # accuracy-vs-budget benchmark
 ```
 
 ## 5. Data model
@@ -238,14 +238,14 @@ c2m bench --suite localization            # accuracy-vs-budget benchmark
 - `S<n>` — symbol (function/class/trait…), only surfaced at zoom level 2+.
 - `X<n>` — external dependency (crates/packages; drawn as offshore islands).
 
-Handles are **stable and never reused**: a persistent registry (`.c2m/handles.json`)
+Handles are **stable and never reused**: a persistent registry (`.ctx2img/handles.json`)
 maps handle → path (+ content hash). Renames are followed via git similarity; deleted
 entries are tombstoned. Stability matters because handles appear in conversation
 transcripts, h5i traces, and cached prompts — a handle must mean the same thing tomorrow.
 
 ### 5.2 The output triple
 
-Every `c2m map` emits exactly three artifacts:
+Every `ctx2img map` emits exactly three artifacts:
 
 1. **`atlas.png`** — the map, rasterized to the provider's patch grid (§7.3).
 2. **`legend.txt`** — small (~400–700 tokens), goes into the model's *text* context:
@@ -254,7 +254,7 @@ Every `c2m map` emits exactly three artifacts:
    - zoom instructions ("call atlas_zoom(R3) / atlas_read(F103)").
    The roster is deliberately a complete degraded fallback: legend-only ≈ aider repo map.
 3. **`index.json`** — sidecar resolving handles to `{path, byte_range, hash, kind}`.
-   Consumed by `c2m read`/`c2m zoom`, **never** placed in model context.
+   Consumed by `ctx2img read`/`ctx2img zoom`, **never** placed in model context.
 
 ### 5.3 Scene graph
 
@@ -296,9 +296,9 @@ never depends on having seen the schema before.
 
 ## 7. The pipeline in detail
 
-### 7.1 Index (`c2m build`)
+### 7.1 Index (`ctx2img build`)
 
-1. **Ingest** — `ignore` walk (respects `.gitignore` + `.c2mignore`); `gix` for history:
+1. **Ingest** — `ignore` walk (respects `.gitignore` + `.ctx2imgignore`); `gix` for history:
    commit recency, churn, co-change coupling (files committed together), authorship
    entropy. Language detection by extension + shebang.
 2. **Parse** — tree-sitter with per-language queries (start: Rust, Python, TS/JS, Go,
@@ -312,9 +312,9 @@ never depends on having seen the schema before.
    for quality; pure TF-IDF fallback with zero model downloads. Embeds file summaries
    (path + top identifiers + doc comments), not full bodies.
 5. **Cache** — everything keyed by `blake3(file content)`; graph deltas recomputed only
-   for changed files. Cache lives in `.c2m/` (gitignored by default).
+   for changed files. Cache lives in `.ctx2img/` (gitignored by default).
 
-### 7.2 Relevance = elevation (`c2m map <query>`)
+### 7.2 Relevance = elevation (`ctx2img map <query>`)
 
 Score per file, combined with fixed, documented weights (tunable):
 
@@ -343,7 +343,7 @@ structure moves, and then only locally.
 - **Global placement:** top-level regions seeded on a 2D canvas by embedding-similarity
   MDS, then relaxed. Seed positions are hashed from stable region identity → determinism.
 - **Hierarchy:** weighted Voronoi treemap (Nocaj–Brandes power-diagram iteration —
-  implemented in `c2m-layout`; verified: no maintained Rust crate exists). Voronoi cells,
+  implemented in `ctx2img-layout`; verified: no maintained Rust crate exists). Voronoi cells,
   unlike squarified treemaps, give organic country-like shapes (the human theme depends
   on this) and better area accuracy.
 - **Incrementality:** cell sites carry over between builds; new files spawn at their
@@ -376,7 +376,7 @@ Layer 0  (text, ~200 tok)   task, tool instructions, precedence rules — NEVER 
 Layer 1  (image+text)       whole-repo atlas + legend/roster
 Layer 2  (image+text)       region tile: files as sub-cells, symbol cities, local edges,
                             1-line summaries in the tile's text roster (not in pixels)
-Layer 3  (text only)        exact source: c2m read F103 — code is always text
+Layer 3  (text only)        exact source: ctx2img read F103 — code is always text
 ```
 
 L2 tiles reuse the same grammar at higher magnification (same theme, same legend schema).
@@ -386,25 +386,25 @@ CodeOCR shows code-in-pixels fails exactly when precision matters.
 ## 9. Agent integration: a skill over a stateless CLI
 
 The zoom protocol needs no server. Every operation is a pure function of what is on
-disk (`.c2m/` index cache + handle registry + working tree) — there is no session state
+disk (`.ctx2img/` index cache + handle registry + working tree) — there is no session state
 to hold between calls — so each step is a fresh CLI invocation:
 
 | Verb | Sig | Returns |
 |---|---|---|
-| `c2m map` | `"<query>" --budget --provider [--json]` | writes L1 atlas image; prints legend + artifact paths to stdout |
-| `c2m zoom` | `<R\|F handle> [--mode image\|text]` | L2 tile image + roster, or text-only detail |
-| `c2m read` | `<F\|S handle> [--lines a:b]` | exact source text (L3), with `path:line` provenance |
-| `c2m locate` | `"<pattern>"` | matching handles + one-line context |
+| `ctx2img map` | `"<query>" --budget --provider [--json]` | writes L1 atlas image; prints legend + artifact paths to stdout |
+| `ctx2img zoom` | `<R\|F handle> [--mode image\|text]` | L2 tile image + roster, or text-only detail |
+| `ctx2img read` | `<F\|S handle> [--lines a:b]` | exact source text (L3), with `path:line` provenance |
+| `ctx2img locate` | `"<pattern>"` | matching handles + one-line context |
 
-The integration surface is a **bundled skill** (`skills/c2m/SKILL.md`, installable into
+The integration surface is a **bundled skill** (`skills/ctx2img/SKILL.md`, installable into
 `.claude/skills/` or any host's skill directory). This is deliberately where the
 leverage is: the hard part of the LensVLM loop working *zero-shot* is teaching the
 **workflow**, and a skill document does that far better than MCP tool descriptions:
 
-1. `c2m map "<task>" --provider claude --budget 2000 --out atlas.png` (auto-builds the
+1. `ctx2img map "<task>" --provider claude --budget 2000 --out atlas.png` (auto-builds the
    index if missing/stale), then **read `atlas.png` with the host's file-read tool** —
    that is how the image enters context; stdout stays text (legend + paths).
-2. Survey legend roster + map, pick handles; `c2m zoom R3` / `c2m read F103 --lines 40:120`.
+2. Survey legend roster + map, pick handles; `ctx2img zoom R3` / `ctx2img read F103 --lines 40:120`.
 3. Budget discipline: trust `--representation auto`; on small repos the legend alone is
    the context, no image read needed.
 
@@ -420,7 +420,7 @@ demand appears (backlog, §14 M5).
 
 ## 10. Calibration & evaluation (make legibility a tested property)
 
-**Calibration harness (`c2m calibrate`)** — the answer to "your semantic grammar may not
+**Calibration harness (`ctx2img calibrate`)** — the answer to "your semantic grammar may not
 be semantic to the model":
 
 1. Generate synthetic repos with known ground truth (planted relevance, planted edges,
@@ -434,7 +434,7 @@ be semantic to the model":
    plus a public **legibility scorecard** per model in the README (this doubles as
    marketing).
 
-**Benchmark harness (`c2m bench`)** — the headline numbers:
+**Benchmark harness (`ctx2img bench`)** — the headline numbers:
 
 - *Localization*: SWE-bench-lite-style issues → does the model name the right
   file/region? Conditions: atlas+legend vs aider-map vs plain file list vs
@@ -457,15 +457,15 @@ engine:
 - **`--theme parchment`**: hillshaded terrain, biome tints by language, coastlines
   (external deps as offshore islands), city glyphs, serif toponyms, compass rose +
   scale bar ("1 cm ≈ 2,000 LOC"), subtle paper grain. SVG output → infinite zoom.
-- **`c2m badge`**: GitHub Action that re-renders the map on push and commits it to the
+- **`ctx2img badge`**: GitHub Action that re-renders the map on push and commits it to the
   README (the repo-visualizer Action proved this loop drives adoption; it's dormant —
   we take the slot with a far prettier artifact).
-- **`c2m diff --map`**: two revisions → annotated map of what moved (PR hero images).
+- **`ctx2img diff --map`**: two revisions → annotated map of what moved (PR hero images).
 - Social card export (1280×640), optional git-history timelapse (Gource's 13k★ show the
   appetite) — post-v1.
 - Launch story: "your repo as a map your AI can actually read" — the eye-candy pulls
   people in, the benchmark table (§10) makes it defensible, the bundled skill makes it
-  useful in the first five minutes (`cp -r skills/c2m .claude/skills/`). This repo
+  useful in the first five minutes (`cp -r skills/ctx2img .claude/skills/`). This repo
   dogfoods its own badge from day one.
 
 ## 12. Performance & determinism targets
@@ -497,7 +497,7 @@ engine:
 - **M0 — Index + text map (parity baseline).** ingest/parse/graph/PageRank + legend-only
   output ≈ aider repo map. Useful alone; becomes the benchmark control arm.
 - **M1 — Static atlas, human theme.** Voronoi treemap + contours + parchment render +
-  `c2m badge`. *Ship the eye-candy first — traction starts here.*
+  `ctx2img badge`. *Ship the eye-candy first — traction starts here.*
 - **M2 — Query-conditioned VLM theme.** relevance field, elevation bands, handles,
   legend/roster, provider budget solver.
 - **M3 — Zoom protocol.** L2 tiles, `read`/`locate`, `--json` mode, bundled agent skill.
@@ -509,10 +509,10 @@ engine:
 
 - **M6 — Text-flow engine.** Typeset arbitrary text inside territory polygons
   (scanline row intervals, mono metrics, wrap markers, comment dimming, spill
-  markers). Prototype target: `c2m zoom R# --inscribe`.
+  markers). Prototype target: `ctx2img zoom R# --inscribe`.
 - **M7 — Density solver + presets.** Budget × provider grid × model preset → px
   size; explicit spill accounting in the tile roster.
-- **M8 — `c2m paint`.** Arbitrary text/stdin → map-folio image(s) at budgeted
+- **M8 — `ctx2img paint`.** Arbitrary text/stdin → map-folio image(s) at budgeted
   density (the general prompt-compression entry point).
 - **M9 — Inscribe aesthetics.** Typographic-map styling: region-name watermarks,
   elevation wash under text, illuminated capitals for summits — the text *is* the
@@ -526,7 +526,7 @@ parallel with M2 after M0.
 
 ## 15. Open questions
 
-1. **Name.** `context2map` is descriptive; a shorter brand (binary `c2m` regardless)
+1. **Name.** `ctx2img` is descriptive; a shorter brand (binary `ctx2img` regardless)
    with a free crates.io slot should be picked before first publish.
 2. Symbol-level graph depth for v1 (file-level edges may be enough; symbol cities can be
    cosmetic until L2 needs them).

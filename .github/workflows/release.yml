@@ -33,13 +33,13 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - name: Build
-        run: cargo build --release -p c2m-cli --target ${{ matrix.target }}
+        run: cargo build --release -p ctx2img-cli --target ${{ matrix.target }}
       - name: Package (unix)
         if: runner.os != 'Windows'
         run: |
-          staging="c2m-${{ github.ref_name }}-${{ matrix.target }}"
+          staging="ctx2img-${{ github.ref_name }}-${{ matrix.target }}"
           mkdir -p "$staging"
-          cp "target/${{ matrix.target }}/release/c2m" "$staging/"
+          cp "target/${{ matrix.target }}/release/ctx2img" "$staging/"
           cp README.md LICENSE "$staging/"
           cp -r skills "$staging/skills"
           tar czf "$staging.tar.gz" "$staging"
@@ -48,9 +48,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $staging = "c2m-${{ github.ref_name }}-${{ matrix.target }}"
+          $staging = "ctx2img-${{ github.ref_name }}-${{ matrix.target }}"
           New-Item -ItemType Directory -Path $staging | Out-Null
-          Copy-Item "target/${{ matrix.target }}/release/c2m.exe" $staging/
+          Copy-Item "target/${{ matrix.target }}/release/ctx2img.exe" $staging/
           Copy-Item README.md,LICENSE $staging/
           Copy-Item -Recurse skills "$staging/skills"
           Compress-Archive -Path $staging -DestinationPath "$staging.zip"

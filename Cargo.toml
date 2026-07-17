@@ -1,26 +1,26 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/c2m-core",
-    "crates/c2m-index",
-    "crates/c2m-layout",
-    "crates/c2m-render",
-    "crates/c2m-cli",
-    "crates/c2m-eval",
+    "crates/ctx2img-core",
+    "crates/ctx2img-index",
+    "crates/ctx2img-layout",
+    "crates/ctx2img-render",
+    "crates/ctx2img-cli",
+    "crates/ctx2img-eval",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/koukyosyumei/h5i-context2map"
+repository = "https://github.com/koukyosyumei/h5i-ctx2img"
 
 [workspace.dependencies]
-c2m-core = { path = "crates/c2m-core" }
-c2m-index = { path = "crates/c2m-index" }
-c2m-layout = { path = "crates/c2m-layout" }
-c2m-render = { path = "crates/c2m-render" }
-c2m-eval = { path = "crates/c2m-eval" }
+ctx2img-core = { path = "crates/ctx2img-core" }
+ctx2img-index = { path = "crates/ctx2img-index" }
+ctx2img-layout = { path = "crates/ctx2img-layout" }
+ctx2img-render = { path = "crates/ctx2img-render" }
+ctx2img-eval = { path = "crates/ctx2img-eval" }
 
 anyhow = "1"
 thiserror = "2"

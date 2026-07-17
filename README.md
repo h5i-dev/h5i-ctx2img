@@ -1,8 +1,8 @@
-# context2map (`c2m`)
+# ctx2img (`ctx2img`)
 
 **Render agent context as images. Same text, roughly 60-75% fewer tokens.**
 
-An image is billed by its pixels, not by how much text it holds. `c2m paint`
+An image is billed by its pixels, not by how much text it holds. `ctx2img paint`
 typesets any text an agent must ingest (a repo, a markdown doc, a prompt,
 tool output) into dense, structured images a vision LLM reads directly,
 plus a small text *factsheet* so exact identifiers are never trusted to
@@ -10,16 +10,16 @@ pixels.
 
 ![This repo's 33k-char design doc as one image](assets/design-map.png)
 
-*`c2m paint docs/DESIGN.md`: this repo's entire design document (~9,800
+*`ctx2img paint docs/DESIGN.md`: this repo's entire design document (~9,800
 text tokens) as **one 2,550-token image**: 74% cheaper, every section a
 labeled box, thicker borders = more relevant to your query.*
 
 ## Usage
 
 ```bash
-cargo install --path crates/c2m-cli
+cargo install --path crates/ctx2img-cli
 
-c2m paint <file|dir|->            # THE command: any text → dense image(s)
+ctx2img paint <file|dir|->            # THE command: any text → dense image(s)
 ```
 
 What you get depends on the input shape:
@@ -34,9 +34,9 @@ What you get depends on the input shape:
 Drill down when needed. Pixels are for reading, text is for exactness:
 
 ```bash
-c2m paint src/auth -q "<task>" # focus: one module's full source as tiles
-c2m read F103 --lines 40:120   # guaranteed-exact text for quoting/editing
-c2m read --find "session"      # search paths + symbols, answers in handles
+ctx2img paint src/auth -q "<task>" # focus: one module's full source as tiles
+ctx2img read F103 --lines 40:120   # guaranteed-exact text for quoting/editing
+ctx2img read --find "session"      # search paths + symbols, answers in handles
 ```
 
 Every render prints its counterfactual (`~2550 image tok vs ~9772 text tok`)
@@ -47,15 +47,15 @@ misread high-entropy strings silently.
 ## Coding agents
 
 ```bash
-cp -r skills/c2m ~/.claude/skills/   # Claude Code; any VLM agent can use the CLI
+cp -r skills/ctx2img ~/.claude/skills/   # Claude Code; any VLM agent can use the CLI
 ```
 
 ## More
 
 - `--provider claude|openai|gemini|qwen`: budgets solve against each
   provider's real image-token formula; canvases shrink to fit the content.
-- `--theme warm|dark`, `--layout organic`, `c2m render` (the pretty
-  parchment map): cosmetics, gated by `c2m calibrate`.
+- `--theme warm|dark`, `--layout organic`, `ctx2img render` (the pretty
+  parchment map): cosmetics, gated by `ctx2img calibrate`.
 - Design rationale, evidence, benchmark harness: [docs/DESIGN.md](docs/DESIGN.md).
 
 Apache-2.0 · embedded DejaVu fonts under their own license (`assets/fonts/`).

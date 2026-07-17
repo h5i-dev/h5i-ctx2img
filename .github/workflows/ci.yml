@@ -32,7 +32,7 @@ jobs:
       - name: Smoke run (paint this repo)
         if: runner.os != 'Windows'
         run: |
-          cargo build --release -p c2m-cli
-          ./target/release/c2m paint README.md --out-dir /tmp/c2m-smoke --force
-          ./target/release/c2m paint . --budget 2000 -q "smoke test"
-          ./target/release/c2m read --find "paint" | head -5
+          cargo build --release -p ctx2img-cli
+          ./target/release/ctx2img paint README.md --out-dir /tmp/ctx2img-smoke --force
+          ./target/release/ctx2img paint . --budget 2000 -q "smoke test"
+          ./target/release/ctx2img read --find "paint" | head -5

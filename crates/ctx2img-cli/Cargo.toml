@@ -1,0 +1,25 @@
+[package]
+name = "ctx2img-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "ctx2img"
+path = "src/main.rs"
+
+[dependencies]
+ctx2img-core.workspace = true
+ctx2img-index.workspace = true
+ctx2img-layout.workspace = true
+ctx2img-render.workspace = true
+ctx2img-eval.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
