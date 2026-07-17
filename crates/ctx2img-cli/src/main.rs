@@ -30,7 +30,7 @@ enum Cmd {
     /// (with a text roster as the map), markdown becomes a section map, flat
     /// text becomes dense pages. Always with a verbatim factsheet.
     Paint {
-        /// Input file or directory (omit to read stdin).
+        /// Input file, directory, or quoted literal text (omit to read stdin).
         input: Option<PathBuf>,
         #[arg(long, value_enum, default_value = "claude")]
         provider: Provider,

@@ -238,6 +238,23 @@ pub fn paint(
         }
     }
     let (text, source_name) = match input {
+        // inline text — `ctx2img paint "<prompt>"`: a positional arg that
+        // is not an existing path and does not look like one (whitespace,
+        // or far longer than any path) paints as literal text. A short
+        // pathless token still errors as a missing file, so a typo'd path
+        // never silently becomes a painting of itself.
+        Some(p) if !p.exists() => {
+            let s = p.to_string_lossy().into_owned();
+            if s.contains(char::is_whitespace) || s.chars().count() > 120 {
+                eprintln!("· input is not a path — painting it as literal text");
+                (s, "prompt".to_string())
+            } else {
+                bail!(
+                    "input `{}` does not exist (pass a file, a directory, quoted literal text, or stdin)",
+                    p.display()
+                );
+            }
+        }
         Some(p) => (
             std::fs::read_to_string(p).with_context(|| format!("read {}", p.display()))?,
             p.file_stem()
@@ -262,12 +279,12 @@ pub fn paint(
     // them as headings would route source through the section map and cost
     // coverage. Code takes the flat path, which paginates losslessly.
     let prose = match input {
-        Some(p) => matches!(
+        Some(p) if p.exists() => matches!(
             p.extension().and_then(|e| e.to_str()).unwrap_or(""),
             "md" | "markdown" | "rst" | "txt"
         ),
-        // stdin: require unambiguous markdown shape
-        None => {
+        // stdin / inline text: require unambiguous markdown shape
+        _ => {
             text.lines().take(3).any(|l| l.starts_with("# "))
                 && text.lines().filter(|l| l.starts_with('#')).count() >= 3
         }
