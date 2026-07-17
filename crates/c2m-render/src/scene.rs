@@ -5,6 +5,7 @@ use c2m_core::graph::EdgeKind;
 use c2m_core::types::Lang;
 use c2m_index::handles::HandleRegistry;
 use c2m_index::workspace::Built;
+use c2m_layout::rect::{squarify, RectBox};
 use c2m_layout::{layout, LayoutOptions, SavedSites, Territory};
 
 #[derive(Debug, Clone)]
@@ -68,6 +69,8 @@ pub struct Scene {
     pub total_loc: u64,
     /// Inscribe text size (px); themes use it when cells carry text.
     pub text_px: f32,
+    /// Box layout (v0.3): rectangular territories, packed text (↵ reflow).
+    pub boxes: bool,
 }
 
 pub struct SceneConfig {
@@ -79,6 +82,9 @@ pub struct SceneConfig {
     pub max_edges: usize,
     /// Inscribe mode: mono size for in-territory text (px at final raster).
     pub text_px: f32,
+    /// Rectangular (squarified-treemap) territories for text-bearing maps —
+    /// pxpipe-density packing. Organic Voronoi remains for index/human maps.
+    pub boxes: bool,
 }
 
 impl Default for SceneConfig {
@@ -90,12 +96,31 @@ impl Default for SceneConfig {
             seed: 0,
             max_edges: 22,
             text_px: 10.0,
+            boxes: true,
         }
     }
 }
 
 /// Inscribe-mode file loader: repo-relative path -> file contents.
 pub type ContentLoader<'a> = dyn Fn(&str) -> Option<String> + 'a;
+
+fn rect_poly(r: &RectBox) -> Vec<(f32, f32)> {
+    vec![
+        (r.x, r.y),
+        (r.x + r.w, r.y),
+        (r.x + r.w, r.y + r.h),
+        (r.x, r.y + r.h),
+    ]
+}
+
+/// Canvas region for box layouts: full-bleed minus a hairline gutter and
+/// the title strip.
+const BOX_BOUNDS: RectBox = RectBox {
+    x: 0.004,
+    y: 0.048,
+    w: 0.992,
+    h: 0.948,
+};
 
 fn area_weight(loc: u64, n_files: usize) -> f32 {
     (loc as f32 + 30.0 * n_files as f32).max(20.0).powf(0.8)
@@ -240,6 +265,7 @@ pub fn build_l1(built: &Built, saved: &mut SavedSites, cfg: &SceneConfig) -> Sce
         field_h: l.field_h,
         total_loc,
         text_px: cfg.text_px,
+        boxes: false,
     }
 }
 
@@ -253,6 +279,9 @@ pub struct DocSection {
 /// Document map: sections become territories carrying their full text —
 /// the `paint` path for structured text (no repo analysis involved).
 pub fn build_doc(sections: &[DocSection], cfg: &SceneConfig) -> Scene {
+    if cfg.boxes {
+        return build_doc_boxes(sections, cfg);
+    }
     let territories: Vec<Territory> = sections
         .iter()
         .enumerate()
@@ -313,6 +342,54 @@ pub fn build_doc(sections: &[DocSection], cfg: &SceneConfig) -> Scene {
         field_h: l.field_h,
         total_loc,
         text_px: cfg.text_px,
+        boxes: false,
+    }
+}
+
+/// Box layout for documents: each section is a rectangle sized by its
+/// text, packed edge-to-edge (squarified treemap), content ↵-reflowed.
+fn build_doc_boxes(sections: &[DocSection], cfg: &SceneConfig) -> Scene {
+    let weights: Vec<f32> = sections
+        .iter()
+        .map(|s| s.text.len() as f32 + 600.0)
+        .collect();
+    let rects = squarify(&weights, BOX_BOUNDS);
+    let cells: Vec<CellVis> = sections
+        .iter()
+        .zip(&rects)
+        .enumerate()
+        .map(|(i, (s, r))| CellVis {
+            handle: format!("§{}", i + 1),
+            name: s.title.clone(),
+            band: s.band,
+            hazards: 0,
+            lang: Lang::Markdown,
+            loc: s.text.lines().count() as u64,
+            poly: rect_poly(r),
+            anchor: (r.x + r.w / 2.0, r.y + r.h / 2.0),
+            centroid: (r.x + r.w / 2.0, r.y + r.h / 2.0),
+            anchor_radius: r.w.min(r.h) / 2.0,
+            cities: Vec::new(),
+            text: Some(vec![crate::paint::reflow(&s.text)]),
+        })
+        .collect();
+    let total_loc: u64 = cells.iter().map(|c| c.loc).sum();
+    Scene {
+        width: cfg.width,
+        height: cfg.height,
+        title: cfg.title.clone(),
+        subtitle: String::new(),
+        cells,
+        coast: Vec::new(),
+        contours: Vec::new(),
+        edges: Vec::new(),
+        islands: Vec::new(),
+        elevation: vec![0.0; 4],
+        field_w: 2,
+        field_h: 2,
+        total_loc,
+        text_px: cfg.text_px,
+        boxes: true,
     }
 }
 
@@ -341,6 +418,68 @@ pub fn build_l2(
     });
     let shown: Vec<usize> = members.iter().copied().take(MAX_FILES).collect();
     let hidden = members.len().saturating_sub(shown.len());
+
+    // Box layout (default for inscribe): rectangles sized by source length,
+    // packed edge-to-edge, ↵-reflowed text — pxpipe-density with structure.
+    if cfg.boxes {
+        if let Some(loader) = content {
+            let sources: Vec<String> = shown
+                .iter()
+                .map(|&fi| {
+                    loader(&a.files[fi].path)
+                        .map(|s| s.lines().take(1200).collect::<Vec<_>>().join("\n"))
+                        .unwrap_or_default()
+                })
+                .collect();
+            let weights: Vec<f32> = sources.iter().map(|s| s.len() as f32 + 500.0).collect();
+            let rects = squarify(&weights, BOX_BOUNDS);
+            let cells: Vec<CellVis> = shown
+                .iter()
+                .zip(&rects)
+                .zip(&sources)
+                .map(|((&fi, r), src)| {
+                    let f = &a.files[fi];
+                    CellVis {
+                        handle: built.file_handles[fi].clone(),
+                        name: f.path.rsplit('/').next().unwrap_or(&f.path).to_string(),
+                        band: a.relevance.bands[fi],
+                        hazards: a.parsed[fi].hazards,
+                        lang: f.lang,
+                        loc: f.loc as u64,
+                        poly: rect_poly(r),
+                        anchor: (r.x + r.w / 2.0, r.y + r.h / 2.0),
+                        centroid: (r.x + r.w / 2.0, r.y + r.h / 2.0),
+                        anchor_radius: r.w.min(r.h) / 2.0,
+                        cities: Vec::new(),
+                        text: Some(vec![crate::paint::reflow(src)]),
+                    }
+                })
+                .collect();
+            let mut subtitle = format!("zoom: {}", region.display_name());
+            if hidden > 0 {
+                subtitle.push_str(&format!(
+                    " (+{hidden} smaller files not shown — see legend)"
+                ));
+            }
+            return Scene {
+                width: cfg.width,
+                height: cfg.height,
+                title: cfg.title.clone(),
+                subtitle,
+                cells,
+                coast: Vec::new(),
+                contours: Vec::new(),
+                edges: Vec::new(),
+                islands: Vec::new(),
+                elevation: vec![0.0; 4],
+                field_w: 2,
+                field_h: 2,
+                total_loc: region.loc,
+                text_px: cfg.text_px,
+                boxes: true,
+            };
+        }
+    }
 
     let territories: Vec<Territory> = shown
         .iter()
@@ -464,5 +603,6 @@ pub fn build_l2(
         field_h: l.field_h,
         total_loc,
         text_px: cfg.text_px,
+        boxes: false,
     }
 }

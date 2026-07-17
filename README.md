@@ -86,7 +86,10 @@ This is `c2m zoom R8 --inscribe` on this repo — one render crate, ten files of
 Pages follow the provider's *resample contract* (Anthropic: 1568×≤728, so
 the encoder sees exactly what you rendered), hard newlines become a visible
 `↵` sentinel so packing stays lossless, and a factsheet of exact identifiers
-accompanies the images as text. Constants are borrowed from
+accompanies the images as text. Structured inputs default to **box layout**
+(`--layout boxes`): each file/section is a rectangle sized by its content,
+packed edge-to-edge at pxpipe-level density — `--layout organic` opts back
+into the Voronoi geography. Constants are borrowed from
 [pxpipe](https://github.com/teamchong/pxpipe)'s field measurements on live
 Claude Code traffic (~3 chars/image-token on dense content, ~99% read
 fidelity with reflow) — c2m adds the structured/cartographic layer on top.

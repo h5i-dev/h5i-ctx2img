@@ -94,7 +94,11 @@ calibrated-frontier use. One image ≈ a whole module; a medium repo ≈ a handf
 L2 tiles; a huge repo keeps a structural L1 with text-as-texture.
 
 Density is solved per render: `density = f(budget, provider patch grid, model preset
-from calibration §10)`. Content that doesn't fit at the chosen density spills in
+from calibration §10)`. *(v0.3)* Text-bearing maps default to **box layout** —
+a squarified treemap of rectangles, one per file/section, ↵-reflow-packed —
+because rectangles tile exactly (no corner waste, no inter-cell channels);
+the organic Voronoi geography remains the index/human layout and is one
+`--layout organic` away. Content that doesn't fit at the chosen density spills in
 relevance order to a `⋯ c2m read F#` marker — coverage degrades explicitly, never
 silently.
 

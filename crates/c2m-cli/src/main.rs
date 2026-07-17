@@ -58,6 +58,10 @@ enum Cmd {
         /// (parchment-flavored candidate — same grammar, softer colors).
         #[arg(long, default_value = "vlm")]
         theme: String,
+        /// Territory layout for text-bearing maps: `boxes` (rectangular,
+        /// pxpipe-density, default) or `organic` (Voronoi geography).
+        #[arg(long, default_value = "boxes")]
+        layout: String,
         /// Human-facing social card instead (parchment SVG, 1280x640) —
         /// the README hero image. Input defaults to the current directory.
         #[arg(long)]
@@ -99,6 +103,9 @@ enum Cmd {
         /// Machine palette: `vlm` (stark default) or `warm`.
         #[arg(long, default_value = "vlm")]
         theme: String,
+        /// Territory layout: `boxes` (default) or `organic`.
+        #[arg(long, default_value = "boxes")]
+        layout: String,
     },
     /// Print exact source for a handle (F#/S#) or path. Layer 3: always text.
     Read {
@@ -174,6 +181,7 @@ fn main() -> anyhow::Result<()> {
             inscribe,
             text_px,
             theme,
+            layout,
         } => ops::zoom(
             repo,
             &handle,
@@ -186,6 +194,7 @@ fn main() -> anyhow::Result<()> {
             inscribe,
             text_px,
             &theme,
+            &layout,
         ),
         Cmd::Read { target, lines } => ops::read(repo, &target, lines.as_deref()),
         Cmd::Locate { pattern } => ops::locate(repo, &pattern),
@@ -201,6 +210,7 @@ fn main() -> anyhow::Result<()> {
             force: _,
             json: _,
             theme: _,
+            layout: _,
             badge,
         } if badge => ops::render(
             input.as_deref().or(repo),
@@ -229,6 +239,7 @@ fn main() -> anyhow::Result<()> {
             force: _,
             json,
             theme,
+            layout: _,
             badge: _,
         } if index => ops::index_atlas(
             input.as_deref().or(repo),
@@ -253,6 +264,7 @@ fn main() -> anyhow::Result<()> {
             force,
             json,
             theme,
+            layout,
             badge: _,
         } => ops::paint(
             input.as_deref(),
@@ -265,6 +277,7 @@ fn main() -> anyhow::Result<()> {
             force,
             json,
             &theme,
+            &layout,
         ),
         Cmd::Render {
             query,

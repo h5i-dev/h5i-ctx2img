@@ -12,6 +12,7 @@
 pub mod field;
 pub mod grid;
 pub mod noise;
+pub mod rect;
 pub mod trace;
 
 use serde::{Deserialize, Serialize};

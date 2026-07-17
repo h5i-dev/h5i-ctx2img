@@ -122,6 +122,7 @@ pub fn flow_text_ops(
     ink: Rgba,
     dim: Rgba,
     spill_note: &str,
+    packed: bool,
 ) -> (Vec<crate::display::Op>, usize) {
     use crate::display::{Op, TextAlign};
     let font = FontKind::Mono;
@@ -164,13 +165,15 @@ pub fn flow_text_ops(
             || trimmed.starts_with('*')
             || trimmed.starts_with("/*");
 
-        let budget = capacity.saturating_sub(if was_wrapped { 2 } else { 0 });
+        // packed mode: content is one ↵-reflowed stream; wraps are not
+        // marked (↵ already marks the real newlines)
+        let budget = capacity.saturating_sub(if was_wrapped && !packed { 2 } else { 0 });
         let mut shown: String = raw.chars().take(budget).collect();
         let rest: String = raw.chars().skip(budget).collect();
         if !rest.is_empty() {
             pending = Some((rest, true));
         }
-        if was_wrapped {
+        if was_wrapped && !packed {
             shown = format!("↪ {shown}");
         }
         if shown.trim().is_empty() {

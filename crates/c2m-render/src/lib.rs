@@ -158,9 +158,10 @@ mod tests {
             s.cells.iter().all(|c| c.cities.is_empty()),
             "text replaces cities"
         );
-        // the theme must emit the actual source as text ops
+        // the theme must emit the actual source as text ops; packed wrapping
+        // may split an identifier across rows, so search the joined stream
         let dl = VlmTheme.overlay(&s);
-        let body: Vec<&str> = dl
+        let body: String = dl
             .ops
             .iter()
             .filter_map(|op| match op {
@@ -169,7 +170,7 @@ mod tests {
             })
             .collect();
         assert!(
-            body.iter().any(|t| t.contains("session_expiry")),
+            body.contains("session_expiry"),
             "source text typeset into the tile"
         );
         let png_a = render_png(&s, &VlmTheme).unwrap();

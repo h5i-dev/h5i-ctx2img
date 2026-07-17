@@ -222,8 +222,10 @@ pub fn zoom(
     inscribe: bool,
     text_px: f32,
     theme: &str,
+    layout: &str,
 ) -> Result<()> {
     let theme = machine_theme(theme)?;
+    let boxes = layout != "organic";
     // inscribe tiles carry actual source text: they earn a larger default canvas
     let budget = budget.unwrap_or(if inscribe { 3600 } else { 1200 });
     let ctx = open(repo)?;
@@ -260,6 +262,7 @@ pub fn zoom(
                     title: format!("{} · {}", repo_name(&ctx.ws), entry.key),
                     seed: seed_for(&entry.key),
                     text_px,
+                    boxes,
                     ..Default::default()
                 };
                 let root = ctx.ws.root.clone();
@@ -567,10 +570,13 @@ pub fn paint(
     force: bool,
     json: bool,
     theme: &str,
+    layout: &str,
 ) -> Result<()> {
     if let Some(p) = input {
         if p.is_dir() {
-            return paint_repo(p, provider, font_px, out_dir, budget, query, json, theme);
+            return paint_repo(
+                p, provider, font_px, out_dir, budget, query, json, theme, layout,
+            );
         }
     }
     let (text, source_name) = match input {
@@ -608,6 +614,7 @@ pub fn paint(
                 force,
                 json,
                 theme,
+                layout,
             );
         }
     }
@@ -702,6 +709,7 @@ fn paint_doc(
     force: bool,
     json: bool,
     theme: &str,
+    layout: &str,
 ) -> Result<()> {
     let theme = machine_theme(theme)?;
     // profitability: the map must cost less than the text it carries; size
@@ -734,6 +742,7 @@ fn paint_doc(
         title: source_name.to_string(),
         seed: seed_for(source_name),
         text_px: font_px.max(8.0),
+        boxes: layout != "organic",
         ..Default::default()
     };
     let s = scene::build_doc(&doc_sections, &cfg);
@@ -781,8 +790,10 @@ fn paint_repo(
     query: &str,
     json: bool,
     theme: &str,
+    layout: &str,
 ) -> Result<()> {
     let theme = machine_theme(theme)?;
+    let boxes = layout != "organic";
     let budget = budget.unwrap_or(12_000);
     let ws = Workspace::open(root)?;
     let now = std::time::SystemTime::now()
@@ -850,6 +861,7 @@ fn paint_repo(
             title: format!("{name} · {}", region.display_name()),
             seed: seed_for(region.display_name()),
             text_px: font_px.max(8.0),
+            boxes,
             ..Default::default()
         };
         let root_buf = ws.root.clone();

@@ -236,6 +236,7 @@ impl MachinePalette {
                     self.ink,
                     Rgba::opaque(128, 128, 128),
                     &spill_note,
+                    scene.boxes,
                 );
                 for op in ops {
                     dl.push(op);
