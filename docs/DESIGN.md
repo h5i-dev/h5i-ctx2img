@@ -98,7 +98,12 @@ from calibration §10)`. *(v0.3)* Text-bearing maps default to **box layout** �
 a squarified treemap of rectangles, one per file/section, ↵-reflow-packed —
 because rectangles tile exactly (no corner waste, no inter-cell channels);
 the organic Voronoi geography remains the index/human layout and is one
-`--layout organic` away. Content that doesn't fit at the chosen density spills in
+`--layout organic` away. A/B at equal budget (crates/c2m-core, 2,600 tok,
+2026-07-16, in-session VLM read): boxes carried ~2–3× more source (several
+files complete vs +143/+242/+518-line spills), equal per-glyph legibility;
+organic additionally suffers edge-curves crossing body text. The index
+atlas stays Voronoi deliberately: its payload is *stable spatial memory*,
+and treemap layouts reshuffle when file-size order changes. Content that doesn't fit at the chosen density spills in
 relevance order to a `⋯ c2m read F#` marker — coverage degrades explicitly, never
 silently.
 
