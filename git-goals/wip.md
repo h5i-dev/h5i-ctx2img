@@ -1,3 +1,3 @@
 # Git Branch Goal: wip
 
-Research image token accounting across VLM APIs and prior art for repo-as-map visualization / repo context compression
+Research image token accounting for Anthropic Claude and OpenAI vision APIs from current official docs
