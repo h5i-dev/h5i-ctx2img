@@ -201,8 +201,9 @@ fn content_tokens(chars: usize, n_boxes: usize, font_px: f32) -> u32 {
 /// carry the full text, exploiting whatever structure the input has.
 ///
 /// Input-shape dispatch:
-/// - **directory** → atlas folio: L1 overview + inscribe tiles per region
-///   (full source in-territory), budget-governed, coverage reported;
+/// - **directory** → region folio: inscribe tiles per region (full source
+///   in-territory), budget-governed, coverage reported; navigation rides
+///   as the text roster, never as an image;
 /// - **markdown** (headings) → document map: sections as territories;
 /// - **flat text** → dense reflowed pages.
 #[allow(clippy::too_many_arguments)]
@@ -525,9 +526,10 @@ fn paint_doc(
     Ok(())
 }
 
-/// Directory → atlas folio: an L1 overview page plus inscribe tiles that
-/// carry the FULL SOURCE of each region, highest-relevance regions first,
-/// until the token budget is spent. Coverage is reported, never implied.
+/// Directory → region folio: inscribe tiles that carry the FULL SOURCE of
+/// each region, highest-relevance regions first, until the token budget is
+/// spent. Coverage is reported, never implied. Navigation is the text
+/// roster (cheaper and more precise than any overview image).
 #[allow(clippy::too_many_arguments)]
 /// The human-facing map: organic Voronoi geography, parchment styling,
 /// infinite-zoom SVG. Cosmetic output; carries no source text.
@@ -635,8 +637,11 @@ fn paint_repo(
         &ws.dir.join("index.json"),
     )?;
 
-    // small budget ⇒ this IS navigation mode; if the full text roster is
-    // cheaper than any useful overview image, emit text and stop
+    // Navigation is TEXT: the roster already carries every region's
+    // handle, band, hazards, and dependencies far cheaper than any
+    // overview image could, and it always rides along with the folio.
+    // Images are reserved for source-bearing tiles — so when the budget
+    // cannot fit even one tile, the roster IS the whole answer.
     let legend_full = build_legend(
         &built,
         query,
@@ -646,38 +651,17 @@ fn paint_repo(
         },
     );
     let roster_tokens = estimate_tokens(&legend_full);
-    if subtree.is_none() && roster_tokens <= 900.min(budget) {
-        eprintln!("· representation: text (full roster ~{roster_tokens} tok fits the budget best)");
+    let per_tile = 2600u32;
+    if subtree.is_none() && (roster_tokens <= 900.min(budget) || budget < per_tile) {
+        eprintln!(
+            "· representation: text (roster ~{roster_tokens} tok; no tile fits ~{budget} tok)"
+        );
         println!("{legend_full}");
         println!("# {FOOTER}");
         return Ok(());
     }
-
-    // page 1: the L1 overview (index) — cheap situational awareness;
-    // skipped when focusing a subtree (the caller knows where they are)
     let mut pages: Vec<(PathBuf, u32, u32)> = Vec::new();
     let mut spent: u32 = 0;
-    if subtree.is_none() {
-        let (ow, oh) = provider.solve(1800.min(budget).max(900), 1.0);
-        let mut saved = SavedSites::load(&ws.layout_path());
-        let cfg = SceneConfig {
-            width: ow,
-            height: oh,
-            title: name.clone(),
-            seed: seed_for(&name),
-            ..Default::default()
-        };
-        let overview = scene::build_l1(&built, &mut saved, &cfg);
-        saved.save(&ws.layout_path())?;
-        let overview_path = dir.join(format!("{name}-atlas.png"));
-        std::fs::write(&overview_path, render_png(&overview, theme)?)?;
-        std::fs::write(
-            overview_path.with_extension("legend.txt"),
-            build_legend(&built, query, &LegendOptions::default()),
-        )?;
-        spent += provider.tokens(ow, oh);
-        pages.push((overview_path, ow, oh));
-    }
 
     // inscribe tiles, summit-first, until the budget runs out; a subtree
     // focus keeps only regions inside (or containing) the requested path
@@ -703,7 +687,6 @@ fn paint_repo(
             .then(x.cmp(&y))
     });
     let mut registry = HandleRegistry::load(&ws.registry_path());
-    let per_tile = 2600u32;
     let mut painted_loc: u64 = 0;
     let mut painted_text = String::new();
     let mut skipped: Vec<String> = Vec::new();
@@ -787,7 +770,7 @@ fn paint_repo(
         )
     } else {
         format!(
-            "atlas folio: page 1 is the overview map; the following tiles carry the FULL SOURCE of each region, most relevant first. Coverage: {coverage:.0}% of {}. ",
+            "region folio: the roster above is the map; each tile carries the FULL SOURCE of one region, most relevant first. Coverage: {coverage:.0}% of {}. ",
             human_loc(total_loc)
         )
     };

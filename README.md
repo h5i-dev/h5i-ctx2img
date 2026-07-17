@@ -27,9 +27,9 @@ What you get depends on the input shape:
 | Input | Output | Measured effect |
 |---|---|---|
 | markdown/doc | one section-map image + `.legend.txt` | 33k-char doc: **9.8k → 2.5k tokens (−74%)** |
-| directory | atlas folio: overview + full-source tiles per module | 14-file crate in one 2.6k-token tile (~2-3x vs text) |
+| directory | region folio: full-source tiles per module + text roster as the map | 14-file crate in one 2.6k-token tile (~2-3x vs text) |
 | flat text / stdin | reflowed pages (1568×728, provider-safe) | dense code/JSON ≈ 3× fewer tokens |
-| directory + `--budget 2000` | navigation only: atlas + legend, no source | whole repo ≈ **2k tokens**; 5k files mapped in **0.4s** |
+| directory + `--budget 2000` | navigation only: text roster, no images | whole repo mapped in **0.4s** for a few hundred tokens |
 
 Drill down when needed. Pixels are for reading, text is for exactness:
 

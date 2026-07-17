@@ -12,8 +12,8 @@ use std::path::PathBuf;
 #[command(
     name = "ctx2img",
     version,
-    about = "ctx2img: render agent context as images that cost a fraction of the tokens.\n\nMain command — ctx2img paint <input>: any text-shaped input becomes images that CARRY THE FULL TEXT,\nshaped by its structure (directory → atlas folio of full-source region tiles; markdown → section\nmap; flat text → dense pages), always with a verbatim factsheet.\n\nNavigation mode — ctx2img paint <dir> --budget 2000 -q \"<task>\": at a small budget the folio degrades to the index atlas (or a text roster if that's cheaper).",
-    after_help = "repo navigation loop: ctx2img paint . --budget 2000 -q \"<task>\" → read the atlas → ctx2img paint <dir> → ctx2img read F#\n--theme parchment is the human map; calibrate/bench are plumbing."
+    about = "ctx2img: render agent context as images that cost a fraction of the tokens.\n\nMain command — ctx2img paint <input>: any text-shaped input becomes images that CARRY THE FULL TEXT,\nshaped by its structure (directory → folio of full-source region tiles; markdown → section\nmap; flat text → dense pages), always with a verbatim factsheet.\n\nNavigation is text: a directory paint always prints the region roster (handles, relevance,\nhazards, deps); at a budget too small for any tile, the roster is the whole answer.",
+    after_help = "repo navigation loop: ctx2img paint . -q \"<task>\" → read the roster → ctx2img paint <dir> → ctx2img read F#\n--theme parchment is the human map; calibrate/bench are plumbing."
 )]
 struct Cli {
     /// Repository root (default: current directory).
@@ -26,9 +26,9 @@ struct Cli {
 #[derive(Subcommand)]
 enum Cmd {
     /// THE FRONT DOOR: render any text-shaped input into images carrying the
-    /// full text — a directory becomes an atlas folio (overview + full-source
-    /// region tiles), markdown becomes a section map, flat text becomes dense
-    /// pages. Always with a verbatim factsheet.
+    /// full text — a directory becomes a folio of full-source region tiles
+    /// (with a text roster as the map), markdown becomes a section map, flat
+    /// text becomes dense pages. Always with a verbatim factsheet.
     Paint {
         /// Input file or directory (omit to read stdin).
         input: Option<PathBuf>,
