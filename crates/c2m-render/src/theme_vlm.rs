@@ -28,7 +28,7 @@ pub fn band_color(band: u8) -> Rgba {
     }
 }
 
-/// Codex mode: band tint light enough that dark mono text stays readable —
+/// Inscribe mode: band tint light enough that dark mono text stays readable —
 /// the elevation wash sits *under* the text.
 pub fn band_tint(band: u8) -> Rgba {
     let c = band_color(band);
@@ -55,9 +55,9 @@ impl Theme for VlmTheme {
                 color: band_color(1),
             });
         }
-        let codex = scene.cells.iter().any(|c| c.text.is_some());
+        let inscribe = scene.cells.iter().any(|c| c.text.is_some());
         // land fills, low bands first so summits paint over shared borders;
-        // codex cells get the light tint so text stays dark-on-light
+        // inscribe cells get the light tint so text stays dark-on-light
         let mut order: Vec<usize> = (0..scene.cells.len()).collect();
         order.sort_by_key(|&i| scene.cells[i].band);
         for &i in &order {
@@ -74,8 +74,8 @@ impl Theme for VlmTheme {
                 });
             }
         }
-        // contours (between-band isolines) — noise under body text, skip in codex
-        for (_, lines) in if codex { &[][..] } else { &scene.contours[..] } {
+        // contours (between-band isolines) — noise under body text, skip in inscribe
+        for (_, lines) in if inscribe { &[][..] } else { &scene.contours[..] } {
             for line in lines {
                 dl.push(Op::Stroke {
                     path: line.clone(),
@@ -159,7 +159,7 @@ impl Theme for VlmTheme {
             if c.poly.len() < 3 {
                 continue;
             }
-            // codex cell: header pinned to the cell top, the text below it
+            // inscribe cell: header pinned to the cell top, the text below it
             if let Some(lines) = &c.text {
                 let hsize = (scene.text_px * 1.2).max(MIN_LABEL_PX);
                 let (bx0, by0, bx1, _) = poly_bbox_px(&c.poly, w, h);

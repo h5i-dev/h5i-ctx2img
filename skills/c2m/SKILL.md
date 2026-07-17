@@ -1,6 +1,6 @@
 ---
 name: c2m
-description: Cut context tokens by rendering it as images. Survey a whole repository in ~2k tokens as a semantic map image (Repository Atlas), zoom into codex tiles that carry the actual source, and resolve exact text via stable handles; `c2m paint` compresses ANY bulky text (docs, tool output, specs) into dense image pages. Use at the START of any task in an unfamiliar or large repo, or before ingesting any large text.
+description: Cut context tokens by rendering it as images. Survey a whole repository in ~2k tokens as a semantic map image (Repository Atlas), zoom into inscribe tiles that carry the actual source, and resolve exact text via stable handles; `c2m paint` compresses ANY bulky text (docs, tool output, specs) into dense image pages. Use at the START of any task in an unfamiliar or large repo, or before ingesting any large text.
 ---
 
 # c2m — Repository Atlas
@@ -34,12 +34,12 @@ source of truth — exact code always comes from `c2m read` as text.
 
    ```bash
    c2m zoom R3            # writes a region tile image + prints a file/symbol roster
-   c2m zoom R3 --codex    # tile with each file's ACTUAL SOURCE typeset in its cell
+   c2m zoom R3 --inscribe    # tile with each file's ACTUAL SOURCE typeset in its cell
    c2m zoom R3 --text     # roster only, no image
    c2m zoom F103          # file detail: symbols with S-handles, imports, hazards
    ```
 
-   Read the tile image the same way if one is written. Prefer `--codex` when
+   Read the tile image the same way if one is written. Prefer `--inscribe` when
    you want to *read the region's code* (several files in one image, ~2–4×
    cheaper than the same text); prefer the plain tile when you only need the
    structure.
@@ -67,7 +67,7 @@ source of truth — exact code always comes from `c2m read` as text.
 
 ## Rules
 
-- The atlas is for *navigation*; codex tiles and paint pages are for
+- The atlas is for *navigation*; inscribe tiles and paint pages are for
   *reading*. Quote, edit, hash-compare, and reason over `c2m read` output or
   the factsheet (text), never over strings you transcribed from an image —
   image misreads are silent and look plausible.

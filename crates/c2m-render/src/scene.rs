@@ -31,7 +31,7 @@ pub struct CellVis {
     pub centroid: (f32, f32),
     pub anchor_radius: f32,
     pub cities: Vec<CityVis>,
-    /// Codex mode (v0.2): the cell's actual content, typeset in-territory.
+    /// Inscribe mode (v0.2): the cell's actual content, typeset in-territory.
     pub text: Option<Vec<String>>,
 }
 
@@ -66,7 +66,7 @@ pub struct Scene {
     pub field_h: usize,
     /// Total LOC represented (for the scale bar).
     pub total_loc: u64,
-    /// Codex text size (px); themes use it when cells carry text.
+    /// Inscribe text size (px); themes use it when cells carry text.
     pub text_px: f32,
 }
 
@@ -77,7 +77,7 @@ pub struct SceneConfig {
     pub seed: u64,
     /// Max dependency curves drawn.
     pub max_edges: usize,
-    /// Codex mode: mono size for in-territory text (px at final raster).
+    /// Inscribe mode: mono size for in-territory text (px at final raster).
     pub text_px: f32,
 }
 
@@ -94,7 +94,7 @@ impl Default for SceneConfig {
     }
 }
 
-/// Codex-mode file loader: repo-relative path -> file contents.
+/// Inscribe-mode file loader: repo-relative path -> file contents.
 pub type ContentLoader<'a> = dyn Fn(&str) -> Option<String> + 'a;
 
 fn area_weight(loc: u64, n_files: usize) -> f32 {
@@ -244,7 +244,7 @@ pub fn build_l1(built: &Built, saved: &mut SavedSites, cfg: &SceneConfig) -> Sce
 }
 
 /// L2: one region's interior — cells are files, cities are symbols.
-/// `content` (codex mode): loads a file's text by repo-relative path; when
+/// `content` (inscribe mode): loads a file's text by repo-relative path; when
 /// given, cells carry their source for in-territory typesetting and symbol
 /// cities are omitted (the text replaces them).
 pub fn build_l2(
@@ -299,7 +299,7 @@ pub fn build_l2(
                         .collect::<Vec<_>>()
                 })
             });
-            // top symbols become labeled cities (codex mode: text replaces them)
+            // top symbols become labeled cities (inscribe mode: text replaces them)
             let mut syms: Vec<&c2m_core::Symbol> = a.parsed[fi].symbols.iter().collect();
             syms.sort_by_key(|s| std::cmp::Reverse(s.line_end.saturating_sub(s.line)));
             let cities = if text.is_some() {

@@ -123,9 +123,9 @@ mod tests {
         assert!(png.len() > 2000);
     }
 
-    /// Codex mode (v0.2): cells carry their actual source text.
+    /// Inscribe mode (v0.2): cells carry their actual source text.
     #[test]
-    fn codex_tile_typesets_source_in_territory() {
+    fn inscribe_tile_typesets_source_in_territory() {
         let dir = demo_repo();
         let ws = Workspace::open(dir.path()).unwrap();
         let built = ws.build("session expiry", 1_700_000_000, false).unwrap();
@@ -174,6 +174,6 @@ mod tests {
         );
         let png_a = render_png(&s, &VlmTheme).unwrap();
         let png_b = render_png(&s, &VlmTheme).unwrap();
-        assert_eq!(png_a, png_b, "codex renders deterministically");
+        assert_eq!(png_a, png_b, "inscribe renders deterministically");
     }
 }

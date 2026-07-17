@@ -206,11 +206,11 @@ pub fn zoom(
     query: Option<&str>,
     text_only: bool,
     json: bool,
-    codex: bool,
+    inscribe: bool,
     text_px: f32,
 ) -> Result<()> {
-    // codex tiles carry actual source text: they earn a larger default canvas
-    let budget = budget.unwrap_or(if codex { 3600 } else { 1200 });
+    // inscribe tiles carry actual source text: they earn a larger default canvas
+    let budget = budget.unwrap_or(if inscribe { 3600 } else { 1200 });
     let ctx = open(repo)?;
     let query = query
         .map(str::to_string)
@@ -255,7 +255,7 @@ pub fn zoom(
                     &mut registry,
                     &mut saved,
                     &cfg,
-                    if codex { Some(&loader) } else { None },
+                    if inscribe { Some(&loader) } else { None },
                 );
                 saved.save(&ctx.ws.dir.join(format!("layout-{handle}.json")))?;
                 let png = render_png(&s, &VlmTheme)?;

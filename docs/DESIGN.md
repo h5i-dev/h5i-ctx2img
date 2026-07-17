@@ -9,7 +9,7 @@ territories carry **the actual text, typeset inside their cells**, and the carto
 (position, area, elevation, roads) carries the semantics. A small machine-readable
 legend and stable handles let the model recover guaranteed-exact source text whenever
 pixels aren't good enough. One artifact pipeline, multiple render targets: a *VLM
-theme* engineered for machine legibility, a *codex mode* where the text is the
+theme* engineered for machine legibility, an *inscribe mode* where the text is the
 terrain, and a *human theme* (cartographic eye-candy) engineered for GitHub traction.
 
 ---
@@ -467,7 +467,7 @@ engine:
 | Handle drift breaking cached prompts/transcripts | Med | persistent registry, tombstones, rename-following (§5.1) |
 | Prompt-injection via file contents leaking into the map | Med | labels are names+handles only, sanitized charset; file *content* never rasterized at L1/L2; hazard layer actively marks untrusted-input surfaces |
 | Scope creep into IDE/graph-viz platform | Med | non-goals (§3); CLI + skill only for v1 |
-| Reasoning collapse on image input (models answer tersely) | Low-Med | map is for *navigation*, reasoning happens over L3 text; control prompt keeps chain-of-thought in text; codex-mode instructions say "transcribe the relevant region before reasoning" |
+| Reasoning collapse on image input (models answer tersely) | Low-Med | map is for *navigation*, reasoning happens over L3 text; control prompt keeps chain-of-thought in text; inscribe-mode instructions say "transcribe the relevant region before reasoning" |
 | *(v0.2)* Character errors in in-image text at aggressive density | **High if unmanaged** | density presets held inside the ≥99% transcription band per model (§10); spill/`read` escape hatch; pixels never authoritative for quoting/editing |
 | *(v0.2)* Non-mono/unicode-heavy content renders poorly at small sizes | Med | mono font, unicode fallback boxes counted as spill; density floor raised for non-ASCII-dense files |
 
@@ -488,12 +488,12 @@ engine:
 
 - **M6 — Text-flow engine.** Typeset arbitrary text inside territory polygons
   (scanline row intervals, mono metrics, wrap markers, comment dimming, spill
-  markers). Prototype target: `c2m zoom R# --codex`.
+  markers). Prototype target: `c2m zoom R# --inscribe`.
 - **M7 — Density solver + presets.** Budget × provider grid × model preset → px
   size; explicit spill accounting in the tile roster.
 - **M8 — `c2m paint`.** Arbitrary text/stdin → map-folio image(s) at budgeted
   density (the general prompt-compression entry point).
-- **M9 — Codex aesthetics.** Typographic-map styling: region-name watermarks,
+- **M9 — Inscribe aesthetics.** Typographic-map styling: region-name watermarks,
   elevation wash under text, illuminated capitals for summits — the text *is* the
   terrain, and it must be beautiful enough to share.
 - **M10 — Density calibration.** Transcription/needle/QA probes over a density

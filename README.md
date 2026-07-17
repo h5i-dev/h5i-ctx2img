@@ -32,7 +32,7 @@ built around that split:
     embedding + graph diffusion + git churn)
   - **Roads** = imports/references · **red hatch** = trust hazards ·
     **islands** = external dependencies
-  - `--codex` tiles typeset each file's real source inside its territory
+  - `--inscribe` tiles typeset each file's real source inside its territory
 - **Text carries the guarantees** — every element has a stable handle
   (`R3`, `F103`, `S12`) resolving to exact source via `c2m read`; a
   **verbatim factsheet** (paths, SHAs, IDs extracted as plain text) rides
@@ -47,7 +47,7 @@ cargo install --path crates/c2m-cli   # or: cargo build --release
 
 c2m map "fix the session expiry bug"  # atlas.png + legend + handles
 c2m zoom R3                           # region tile: files + symbols
-c2m zoom R3 --codex                   # territory tile with the SOURCE TEXT inside
+c2m zoom R3 --inscribe                # territory tile with the SOURCE TEXT inside
 c2m read F103 --lines 40:120          # exact source, always text
 c2m locate "session"                  # find handles
 
@@ -63,10 +63,10 @@ falls back to a text roster on small repos, and `paint` refuses when text is
 cheaper (override with `--force`). Every run prints the counterfactual —
 image tokens spent vs text tokens avoided.
 
-This is `c2m zoom R8 --codex` on this repo — one render crate, ten files of
+This is `c2m zoom R8 --inscribe` on this repo — one render crate, ten files of
 **actual source code** typeset inside their territories, ~2,600 image tokens:
 
-![Codex tile: source code typeset inside map territories](assets/codex-tile.png)
+![Inscribe tile: source code typeset inside map territories](assets/inscribe-tile.png)
 
 ### `c2m paint`: any text → image pages
 
@@ -140,7 +140,7 @@ ingest (gitignore-aware) → tree-sitter symbols/imports (6 languages)
 → dependency graph + PageRank → hashed TF-IDF embeddings
 → query relevance (BM25 + cosine + personalized-PageRank diffusion + churn)
 → grid power-diagram treemap (persisted, stable geography)
-→ themed render (VLM / codex text-flow / parchment) → PNG/SVG + legend
+→ themed render (VLM / inscribe text-flow / parchment) → PNG/SVG + legend
 → + factsheet & sidecar (exactness stays in text)
 ```
 
