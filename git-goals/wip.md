@@ -1,1 +1,3 @@
-Design a Rust tool (context2map) that converts repo/context into query-conditioned semantic map images + zoomable handles for VLM token reduction
+# Git Branch Goal: wip
+
+Research optical/visual context compression papers (DeepSeek-OCR, arXiv 2604.02492/LensVLM, Glyph, related work) and return structured digest
