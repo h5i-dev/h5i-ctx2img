@@ -20,7 +20,9 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - os: macos-13
+          # Intel-mac binary cross-compiles on the arm64 runner
+          # (macos-13, the last Intel runner image, is retired)
+          - os: macos-latest
             target: x86_64-apple-darwin
           - os: macos-latest
             target: aarch64-apple-darwin
