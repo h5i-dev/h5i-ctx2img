@@ -63,6 +63,11 @@ falls back to a text roster on small repos, and `paint` refuses when text is
 cheaper (override with `--force`). Every run prints the counterfactual —
 image tokens spent vs text tokens avoided.
 
+This is `c2m zoom R8 --codex` on this repo — one render crate, ten files of
+**actual source code** typeset inside their territories, ~2,600 image tokens:
+
+![Codex tile: source code typeset inside map territories](assets/codex-tile.png)
+
 ### `c2m paint`: any text → image pages
 
 Pages follow the provider's *resample contract* (Anthropic: 1568×≤728, so
