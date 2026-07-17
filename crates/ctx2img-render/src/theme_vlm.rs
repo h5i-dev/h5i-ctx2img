@@ -264,7 +264,10 @@ impl MachinePalette {
                     }
                     if size >= 7.0 {
                         dl.push(Op::Text {
-                            pos: ((bx0 + bx1) / 2.0 / w, (by0 + by1) / 2.0 / h + size * 0.35 / h),
+                            pos: (
+                                (bx0 + bx1) / 2.0 / w,
+                                (by0 + by1) / 2.0 / h + size * 0.35 / h,
+                            ),
                             text: c.handle.clone(),
                             size_px: size,
                             color: self.ink,
