@@ -1,3 +1,3 @@
 # Git Branch Goal: fix-repo
 
-Support ctx2img paint "<literal text>": non-path positional arg paints as inline text
+Revert inline-text positional arg; document echo PROMPT | ctx2img paint in README instead
